@@ -1,0 +1,20 @@
+new NLP improvement :
+Skills enrichment
+Synonym expansion (e.g., js→javascript, tf→tensorflow, ml→machine learning, dl→deep learning).
+Multi‑word skill detection (e.g., object oriented programming, rest api, microservices) using simple phrase checks.
+Result: profile.skills is automatically expanded with synonyms and multi‑phrases from the resume text.
+Experience date ranges (numeric/year) supplement
+Added support for “03/2020–07/2022” and “2019–2022” on top of your existing month‑name ranges.
+Only added when nearby text looks like employment (role/company keywords) and not in “Projects” context.
+Result: profile.experience_ranges is appended (no duplicates) so gaps/overlaps and totals are more accurate.
+Education normalization
+Normalized degrees into levels: phd, masters, bachelor, diploma.
+Result: education_normalized: [{raw, level}] available alongside your existing education.
+Certifications and contacts
+Certifications detection (AWS/Azure/GCP, PMP, Scrum, CISSP, ITIL, CKAD/CKA, RHCE/RHCSA, Oracle).
+Email/phone/links extraction.
+Result: available as certifications and contacts in analysis output (also passed through in the return)
+
+Backward compatibility:
+Implemented in services/analysis.py via an enrichment step before computing gaps/overlaps and missing skills.
+No ML, no model training—fully deterministic and transparent.

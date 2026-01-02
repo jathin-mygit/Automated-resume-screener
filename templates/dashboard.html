@@ -1,0 +1,1346 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HR Dashboard • Automated Resume Screener</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .dash-wrap { display: grid; gap: 1.25rem; }
+    .dash-grid { display: grid; grid-template-columns: 1fr; gap: 1.25rem; }
+    @media (min-width: 1000px) { .dash-grid { grid-template-columns: 380px 1fr; } }
+    .viz-card { position: relative; }
+    #scatter { width: 100%; height: 460px; background: var(--surface-2); border-radius: 12px; display: block; }
+    .legend { display: flex; flex-wrap: wrap; gap: .5rem .75rem; margin-top: .5rem; }
+    .legend .item { display: inline-flex; align-items: center; gap: .5rem; font-size: .9rem; opacity: .9; }
+    .legend .swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+    .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; }
+    .kpi { background: var(--surface-2); border-radius: 12px; padding: .9rem; text-align: center; }
+    .kpi h4 { margin: 0 0 .25rem; font-size: .9rem; opacity: .8; }
+    .kpi .val { font-weight: 700; font-size: 1.25rem; }
+    .neighbors { margin-top: .5rem; font-size: .9rem; opacity: .9; }
+    .neighbors strong { opacity: 1; }
+    .tbl { width: 100%; border-collapse: collapse; }
+    .tbl th, .tbl td { padding: .6rem .7rem; border-bottom: 1px solid var(--surface-3); text-align: left; }
+    .tbl th { font-weight: 600; opacity: .9; }
+    .flag { background: var(--surface-3); padding: .15rem .45rem; border-radius: 999px; margin-right: .25rem; display: inline-block; }
+    .table-wrap { max-height: 420px; overflow: auto; border-radius: 10px; }
+    .tbl thead th { position: sticky; top: 0; background: var(--surface-1); z-index: 1; }
+    .th-sort { color: var(--text-strong, #fff); }
+    .loading-overlay { position:absolute; inset:0; display:none; align-items:center; justify-content:center; backdrop-filter: blur(2px); background: rgba(0,0,0,0.15); border-radius:12px; }
+    .spinner { width:28px; height:28px; border:3px solid rgba(255,255,255,.25); border-top-color:#22d3ee; border-radius:50%; animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .skeleton { position: relative; overflow: hidden; background: linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.12), rgba(255,255,255,0.05)); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+    @keyframes shimmer { 0%{ background-position: 200% 0 } 100%{ background-position: -200% 0 } }
+    .chipbar { display:flex; gap:8px; flex-wrap: wrap; margin-top:8px }
+    .chipbtn { border:1px solid var(--surface-3); background: var(--surface-2); color: var(--text); border-radius:999px; padding:4px 10px; cursor:pointer; font-size:.85rem }
+    .chipbtn.active { border-color:#34d399; background: rgba(52,211,153,0.12) }
+    :root[data-theme='light'] .card.glass { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; z-index: 50; }
+    .modal-overlay { z-index: 9999; backdrop-filter: blur(2px); }
+    .modal { width: min(840px, 92vw); max-height: 85vh; overflow: auto; background: var(--surface-1); border:1px solid var(--surface-3); border-radius: 14px; box-shadow: 0 15px 50px rgba(0,0,0,.35); }
+    .modal .header-row { position: sticky; top: 0; background: var(--surface-1); z-index: 1; padding: 14px 16px; border-bottom: 1px solid var(--surface-3); display:flex; align-items:center; justify-content:space-between }
+    .modal .body { padding: 14px 16px; display: grid; gap: 12px; background: var(--surface-1); }
+    /* Ensure opaque cards inside modal to avoid bleed-through */
+    .modal .card.glass { background: var(--surface-2); }
+    .metric-grid { display:grid; grid-template-columns: repeat(2,1fr); gap:10px }
+    .explain-row { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border:1px solid var(--surface-3); border-radius:10px }
+    .bar-rows { display:grid; gap:8px }
+    .bar-row { display:flex; align-items:center; gap:10px }
+    .bar-label { width: 180px; font-size: .92rem }
+    .bar { flex:1; height: 8px; background: var(--surface-3); border-radius: 999px; overflow: hidden; position: relative }
+    .bar-fill { position:absolute; left:0; top:0; bottom:0; width:0; background: linear-gradient(90deg, #22d3ee, #34d399); border-radius: 999px }
+    .bar-fill.neg { background: #ef4444 }
+    .badge { border:1px solid var(--surface-3); padding:2px 8px; border-radius:999px; margin-right:6px; display:inline-block }
+    @media print {
+      header.site-header, #themeToggle, #analyticsForm, .row-actions button, .chipbar, .switch, #clearBrush,
+      #fairnessThresh, #exportFairness, #exportTopN, #topMetric, #topN, #whatIfCard .controls, .modal-overlay { display: none !important; }
+      .table-wrap { max-height: none; overflow: visible; }
+      .dash-grid { grid-template-columns: 1fr !important; }
+      body { background: #fff; color: #000; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-grid">
+      <a class="brand" href="/" aria-label="Automated Resume Screener home">
+        <div class="logo" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="g1" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#22d3ee"/>
+                <stop offset="1" stop-color="#34d399"/>
+              </linearGradient>
+            </defs>
+            <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#g1)"/>
+            <path d="M22 30c6-5 14-5 20 0v10c-6 5-14 5-20 0V30z" fill="rgba(255,255,255,.9)"/>
+            <circle cx="32" cy="28" r="6" fill="rgba(255,255,255,.92)"/>
+          </svg>
+        </div>
+        <div class="brand-txt">
+          <h1>HR Dashboard</h1>
+          <p class="subtitle">Clustered insights and candidate analytics</p>
+        </div>
+      </a>
+      <nav class="main-nav" aria-label="Primary">
+        <a href="/" class="nav-link">Home</a>
+        <a href="/dashboard" class="nav-link active">HR Dashboard</a>
+      </nav>
+      <div class="actions">
+        <button id="themeToggle" class="icon-btn" aria-label="Toggle theme" title="Toggle theme">
+          <span class="icon">☾</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="card glass rise">
+      <div class="header-row">
+        <h3 class="card-title">Screened-in Resumes</h3>
+        <div class="row-actions">
+          <label for="topMetric" style="margin-right:8px">Rank by</label>
+          <select id="topMetric" style="margin-right:12px;border-radius:10px;padding:6px;background:var(--surface-2);border:1px solid var(--surface-3);color:var(--text)">
+            <option value="overall_score">Overall</option>
+            <option value="success_score">Success</option>
+            <option value="semantic_score">Semantic</option>
+            <option value="what_if">What‑If</option>
+          </select>
+          <label for="topN" style="margin-right:8px">Top N</label>
+          <input id="topN" type="number" min="1" value="5" style="width:80px;border-radius:10px;padding:6px;background:var(--surface-2);border:1px solid var(--surface-3);color:var(--text)" />
+          <button id="exportTopN" class="ghost" style="margin-left:12px">Export Top N</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="tbl" id="topNTable">
+          <thead>
+          <tr>
+            <th>#</th>
+            <th>Resume</th>
+            <th>Overall</th>
+            <th>Semantic</th>
+            <th>Hard</th>
+            <th>Success</th>
+            <th title="What‑If score (if enabled)">What‑If</th>
+            <th title="Rank change vs Success when What‑If enabled">Δ</th>
+          </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </header>
+
+  <main class="container dash-wrap">
+    <div class="dash-grid">
+      <div class="card glass rise">
+        <h3 class="card-title">Job description and resumes</h3>
+        <form id="analyticsForm">
+          <input type="hidden" id="session_id" name="session_id" />
+          <label for="job_description">Job Description</label>
+          <textarea id="job_description" name="job_description" rows="8" placeholder="Paste the JD here..." required></textarea>
+
+          <label for="hard_skills" class="mt">Hard Requirements</label>
+          <input id="hard_skills" name="hard_skills" type="text" placeholder="e.g., Python, Django, SQL" />
+
+          <label for="nice_skills" class="mt">Nice-to-have Skills</label>
+          <input id="nice_skills" name="nice_skills" type="text" placeholder="e.g., AWS, Docker, Linux" />
+
+          <label for="resumes" class="mt">Upload Resumes (PDF/DOCX/TXT)</label>
+          <input id="resumes" name="resumes" type="file" accept=".pdf,.docx,.txt" multiple required />
+
+          <button type="submit" class="primary mt">Analyze</button>
+        </form>
+      </div>
+
+      <div class="card glass rise viz-card">
+        <div class="header-row">
+          <h3 class="card-title">PCA Scatter by Cluster</h3>
+          <div class="row-actions">
+            <label class="switch" title="Label points">
+              <input type="checkbox" id="toggleLabels" />
+              <span class="slider"></span>
+            </label>
+            <button id="clearBrush" class="ghost" style="margin-left:8px">Clear Brush</button>
+            <button id="exportPdf" class="ghost" style="margin-left:8px">Export PDF</button>
+          </div>
+        </div>
+        <canvas id="scatter" width="1000" height="460" aria-label="Candidate clusters"></canvas>
+        <div id="vizLoading" class="loading-overlay"><div class="spinner"></div></div>
+        <div class="legend" id="legend"></div>
+        <div class="kpis mt">
+          <div class="kpi"><h4>Total Candidates</h4><div class="val" id="kpiTotal">0</div></div>
+          <div class="kpi"><h4>Clusters</h4><div class="val" id="kpiClusters">0</div></div>
+          <div class="kpi"><h4>Avg Success</h4><div class="val" id="kpiAvgSuccess">0%</div></div>
+        </div>
+        <div class="card glass" style="margin-top:12px">
+          <div class="header-row">
+            <h4 class="card-title" style="margin:0">Filters</h4>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label for="clusterFilter">Cluster</label>
+              <select id="clusterFilter" multiple size="4" style="width:100%;border-radius:12px;padding:8px;background:rgba(2,6,23,0.15);border:1px solid var(--card-border);color:var(--text)"></select>
+              <p class="hint">Hold Ctrl/Cmd to select multiple clusters. Empty = all.</p>
+              <div class="chipbar">
+                <button type="button" id="chipS80" class="chipbtn">Success ≥ 80%</button>
+                <button type="button" id="chipS90" class="chipbtn">Success ≥ 90%</button>
+                <button type="button" id="chipHard" class="chipbtn">Hard 100%</button>
+              </div>
+            </div>
+            <div>
+              <label for="minSuccess">Min Success %</label>
+              <input type="range" id="minSuccess" min="0" max="100" value="0" />
+              <div class="hint">Current: <span id="minSuccessVal">0%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card glass rise" id="whatIfCard">
+      <div class="header-row">
+        <h3 class="card-title">What‑If Simulator</h3>
+        <div class="row-actions">
+          <label style="display:inline-flex;align-items:center;gap:8px"><input type="checkbox" id="whatIfEnable" /> Use What‑If for ranking</label>
+        </div>
+      </div>
+      <div class="controls" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+        <div>
+          <label>Weight: Overall</label>
+          <input type="range" id="wOverall" min="0" max="100" value="55" />
+        </div>
+        <div>
+          <label>Weight: Semantic</label>
+          <input type="range" id="wSemantic" min="0" max="100" value="10" />
+        </div>
+        <div>
+          <label>Weight: Hard coverage</label>
+          <input type="range" id="wHard" min="0" max="100" value="15" />
+        </div>
+      </div>
+      <p class="hint">Adjust weights to preview ranking changes. Success score remains unchanged; fairness uses baseline.</p>
+    </div>
+
+    <div class="card glass rise">
+      <h3 class="card-title">Candidate Insights</h3>
+      <div class="table-wrap">
+        <table class="tbl" id="candTable">
+          <thead>
+          <tr>
+            <th>#</th>
+            <th data-sort="filename" title="Sort by resume filename" style="cursor:pointer">Resume</th>
+            <th data-sort="cluster_id" title="Sort by cluster" style="cursor:pointer">Cluster</th>
+            <th data-sort="overall_score" title="Sort by overall score" style="cursor:pointer">Overall</th>
+            <th data-sort="confidence" title="Sort by confidence" style="cursor:pointer">Confidence</th>
+            <th data-sort="risk_score" title="Sort by risk" style="cursor:pointer">Risk</th>
+            <th data-sort="keyword_score" title="Sort by keyword score" style="cursor:pointer">Keyword</th>
+            <th data-sort="semantic_score" title="Sort by semantic score" style="cursor:pointer">Semantic</th>
+            <th data-sort="hard_skill_coverage" title="Sort by hard coverage" style="cursor:pointer">Hard</th>
+            <th data-sort="success_score" title="Sort by success score" style="cursor:pointer">Success</th>
+            <th>Neighbors (top-3)</th>
+            <th>Group</th>
+            <th>Flags</th>
+          </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card glass rise">
+      <h3 class="card-title">Cluster Summary</h3>
+      <div id="clusterSummary" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px"></div>
+    </div>
+
+    <div class="card glass rise">
+      <div class="header-row">
+        <h3 class="card-title">Fairness Analysis</h3>
+        <div class="row-actions">
+          <label for="fairnessThresh" style="margin-right:8px">Pass if Success ≥</label>
+          <input id="fairnessThresh" type="number" min="0" max="100" value="80" style="width:90px;border-radius:10px;padding:6px;background:var(--surface-2);border:1px solid var(--surface-3);color:var(--text)" />
+          <button id="exportFairness" class="ghost" style="margin-left:12px">Export Fairness CSV</button>
+        </div>
+      </div>
+      <div id="fairnessSummary" class="hint" style="margin:8px 12px 0 12px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <h4 style="margin:0 0 6px">Selection Rates by Group</h4>
+          <canvas id="fairnessBars" width="480" height="180"></canvas>
+        </div>
+        <div>
+          <h4 style="margin:0 0 6px">Metrics</h4>
+          <div id="fairnessTable"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card glass rise">
+      <h3 class="card-title">Score Distributions</h3>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+        <div>
+          <h4 style="margin:0 0 6px">Overall</h4>
+          <canvas id="histOverall" width="480" height="160"></canvas>
+        </div>
+        <div>
+          <h4 style="margin:0 0 6px">Semantic</h4>
+          <canvas id="histSemantic" width="480" height="160"></canvas>
+        </div>
+        <div>
+          <h4 style="margin:0 0 6px">Keyword</h4>
+          <canvas id="histKeyword" width="480" height="160"></canvas>
+        </div>
+        <div>
+          <h4 style="margin:0 0 6px">Success</h4>
+          <canvas id="histSuccess" width="480" height="160"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card glass rise">
+      <h3 class="card-title">Flags & Gaps Analytics</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <h4 style="margin:0 0 6px">Flag Counts</h4>
+          <div id="flagCounts"></div>
+        </div>
+        <div>
+          <h4 style="margin:0 0 6px">Gap Lengths (days)</h4>
+          <div id="gapSummary"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div id="scatterTip" class="scatter-tooltip"></div>
+  <div id="explainOverlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="explainTitle">
+    <div class="modal">
+      <div class="header-row">
+        <h3 id="explainTitle" class="card-title" style="margin:0">Candidate explanation</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="explainCopy" class="ghost">Copy</button>
+          <button id="explainExport" class="ghost">Export JSON</button>
+          <button id="explainClose" class="ghost">Close</button>
+        </div>
+      </div>
+      <div id="explainBody" class="body"></div>
+    </div>
+  </div>
+
+  <script>
+    // Theme toggle
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon();
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const curr = document.documentElement.getAttribute('data-theme');
+      const next = curr === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeIcon();
+      drawScatter();
+    });
+    function updateThemeIcon(){
+      const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+      document.querySelector('#themeToggle .icon').textContent = isDark ? '☾' : '☀';
+    }
+
+    // Toast helper
+    function showToast(msg, timeout=2500){
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.hidden = false; t.classList.add('show');
+      setTimeout(()=>{ t.classList.remove('show'); t.hidden = true; }, timeout);
+    }
+
+    const form = document.getElementById('analyticsForm');
+    const sessionInput = document.getElementById('session_id');
+    const canvas = document.getElementById('scatter');
+    const ctx = canvas.getContext('2d');
+    const legend = document.getElementById('legend');
+    const toggleLabels = document.getElementById('toggleLabels');
+    const tbody = document.querySelector('#candTable tbody');
+    const topNInput = document.getElementById('topN');
+    const topNTbody = document.querySelector('#topNTable tbody');
+    const topMetricSelect = document.getElementById('topMetric');
+    const exportTopNBtn = document.getElementById('exportTopN');
+    const exportPdfBtn = document.getElementById('exportPdf');
+    const vizLoading = document.getElementById('vizLoading');
+    const clearBrushBtn = document.getElementById('clearBrush');
+    const chipS80 = document.getElementById('chipS80');
+    const chipS90 = document.getElementById('chipS90');
+    const chipHard = document.getElementById('chipHard');
+    const fairnessThresh = document.getElementById('fairnessThresh');
+    const fairnessBars = document.getElementById('fairnessBars');
+    const fairnessTable = document.getElementById('fairnessTable');
+    const exportFairnessBtn = document.getElementById('exportFairness');
+    const fairnessSummary = document.getElementById('fairnessSummary');
+
+    // What‑If controls
+    const whatIfEnable = document.getElementById('whatIfEnable');
+    const wOverall = document.getElementById('wOverall');
+    const wSemantic = document.getElementById('wSemantic');
+    const wHard = document.getElementById('wHard');
+
+    const clusterFilter = document.getElementById('clusterFilter');
+    const minSuccess = document.getElementById('minSuccess');
+    const minSuccessVal = document.getElementById('minSuccessVal');
+    const clusterSummaryEl = document.getElementById('clusterSummary');
+    const flagCountsEl = document.getElementById('flagCounts');
+    const gapSummaryEl = document.getElementById('gapSummary');
+
+    let view = { clusters: new Set(), minSuccess: 0, hiddenClusters: new Set(), hardFull: false };
+    let sortState = { key: 'overall_score', dir: 'desc' };
+    let brushRect = null; // {x0,y0,x1,y1} in canvas coords
+    let selectedIdx = -1;
+    
+    const kpiTotal = document.getElementById('kpiTotal');
+    const kpiClusters = document.getElementById('kpiClusters');
+    const kpiAvgSuccess = document.getElementById('kpiAvgSuccess');
+
+    let results = [];
+    let colors = {};
+    let lastPositions = [];
+    let groupMap = loadGroupMap();
+    const HIST_STATE = new Map();
+
+    // Lightweight client session id for accumulating uploads
+    function getSessionId(){
+      let sid = localStorage.getItem('ars_session_id');
+      if (!sid){ sid = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('ars_session_id', sid); }
+      return sid;
+    }
+    sessionInput.value = getSessionId();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      showToast('Running analytics…');
+      tbody.innerHTML = '';
+      results = [];
+      drawScatter();
+
+      const fd = new FormData(form);
+      if (!fd.get('session_id')) fd.append('session_id', sessionInput.value || getSessionId());
+      setLoading(true);
+      try {
+        const ac = new AbortController();
+        const t = setTimeout(()=>ac.abort(), 60000);
+        const res = await fetch('/api/analytics', { method: 'POST', body: fd, signal: ac.signal });
+        clearTimeout(t);
+        let data;
+        try {
+          data = await res.json();
+        } catch (jsonErr) {
+          const txt = await res.text().catch(()=>'<non-json response>');
+          throw new Error(`HTTP ${res.status} ${res.statusText}: ${txt.slice(0,300)}`);
+        }
+        if (!res.ok) {
+          const msg = (data && (data.error || data.message)) || `HTTP ${res.status} ${res.statusText}`;
+          alert(`Failed to run analytics: ${msg}`);
+          return;
+        }
+        results = Array.isArray(data.results) ? data.results : [];
+        buildClusterFilter(results);
+        updateAll();
+        showToast('Done');
+      } catch (err) {
+        console.error('Analytics error:', err);
+        alert(`Unexpected error while running analytics: ${err && err.message ? err.message : err}`);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    // Utility: debounce (must be defined before any use)
+    const debounce = (fn, ms=150) => { let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); }; };
+
+    toggleLabels.addEventListener('change', drawScatter);
+
+    if (topNInput) topNInput.addEventListener('input', updateTopN);
+    if (topMetricSelect) topMetricSelect.addEventListener('change', updateTopN);
+    if (exportTopNBtn) exportTopNBtn.addEventListener('click', exportTopNCsv);
+    if (exportPdfBtn) exportPdfBtn.addEventListener('click', exportPdfReport);
+    if (clearBrushBtn) clearBrushBtn.addEventListener('click', ()=>{ brushRect=null; updateAll(); });
+    if (chipS80) chipS80.addEventListener('click', ()=>{ minSuccess.value='80'; chipS80.classList.toggle('active', true); chipS90.classList.remove('active'); captureFilters(); updateAll(); });
+    if (chipS90) chipS90.addEventListener('click', ()=>{ minSuccess.value='90'; chipS90.classList.toggle('active', true); chipS80.classList.remove('active'); captureFilters(); updateAll(); });
+    if (chipHard) chipHard.addEventListener('click', ()=>{ view.hardFull=!view.hardFull; chipHard.classList.toggle('active', view.hardFull); updateAll(); });
+    if (fairnessThresh) fairnessThresh.addEventListener('input', debounce(updateFairness, 120));
+    if (exportFairnessBtn) exportFairnessBtn.addEventListener('click', exportFairnessCsv);
+    if (whatIfEnable) whatIfEnable.addEventListener('change', ()=>{ saveWhatIf(); updateAll(); });
+    const onWhatIfChange = debounce(()=>{ saveWhatIf(); updateAll(); }, 120);
+    if (wOverall) wOverall.addEventListener('input', onWhatIfChange);
+    if (wSemantic) wSemantic.addEventListener('input', onWhatIfChange);
+    if (wHard) wHard.addEventListener('input', onWhatIfChange);
+
+    // (debounce defined earlier)
+    if (clusterFilter) clusterFilter.addEventListener('change', () => { captureFilters(); updateAll(); });
+    if (minSuccess) minSuccess.addEventListener('input', debounce(() => { captureFilters(); updateAll(); }, 120));
+
+    // sortable headers
+    document.querySelectorAll('#candTable thead [data-sort]')
+      .forEach(th => th.addEventListener('click', () => {
+        const key = th.getAttribute('data-sort');
+        if (sortState.key === key) { sortState.dir = (sortState.dir === 'asc') ? 'desc' : 'asc'; }
+        else { sortState.key = key; sortState.dir = 'desc'; }
+        updateAll();
+      }));
+
+    function captureFilters(){
+      const sel = clusterFilter ? Array.from(clusterFilter.selectedOptions).map(o=>parseInt(o.value)).filter(v=>!Number.isNaN(v)) : [];
+      view.clusters = new Set(sel);
+      view.minSuccess = minSuccess ? (parseInt(minSuccess.value)||0) : 0;
+      if (minSuccessVal) minSuccessVal.textContent = view.minSuccess + '%';
+      // persist
+      try {
+        localStorage.setItem('dash_filters', JSON.stringify({ clusters: sel, minSuccess: view.minSuccess }));
+      } catch(e){}
+    }
+
+    function buildClusterFilter(items){
+      if (!clusterFilter) return;
+      const cls = Array.from(new Set(items.map(r => r.cluster_id))).sort((a,b)=>a-b);
+      clusterFilter.innerHTML = '';
+      cls.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = String(c);
+        opt.textContent = 'Cluster ' + c;
+        clusterFilter.appendChild(opt);
+      });
+      // restore persisted
+      try {
+        const saved = JSON.parse(localStorage.getItem('dash_filters')||'null');
+        if (saved && Array.isArray(saved.clusters)){
+          Array.from(clusterFilter.options).forEach(o => { o.selected = saved.clusters.includes(parseInt(o.value)); });
+          if (typeof saved.minSuccess === 'number' && minSuccess){ minSuccess.value = String(saved.minSuccess); }
+        }
+      } catch(e){}
+      captureFilters();
+    }
+
+    function filtered(){
+      return (results||[]).filter(r => {
+        const sc = Math.round((r.success_score||0)*100);
+        const cid = parseInt(r.cluster_id);
+        const clusterOk = (view.clusters.size===0) || view.clusters.has(cid);
+        const notHidden = !view.hiddenClusters.has(cid);
+        if (!(clusterOk && notHidden && sc >= view.minSuccess)) return false;
+        if (view.hardFull && (r.hard_skill_coverage||0) < 0.999) return false;
+        if (brushRect && lastPositions.length){
+          const key = r.filename||'';
+          const p = lastPositions.find(p=>p.key===key);
+          if (!p) return false;
+          const x0=Math.min(brushRect.x0,brushRect.x1), x1=Math.max(brushRect.x0,brushRect.x1);
+          const y0=Math.min(brushRect.y0,brushRect.y1), y1=Math.max(brushRect.y0,brushRect.y1);
+          if (!(p.x>=x0 && p.x<=x1 && p.y>=y0 && p.y<=y1)) return false;
+        }
+        return true;
+      });
+    }
+
+    function updateAll(){
+      const items = filtered();
+      const sorted = sortItems(items, sortState.key, sortState.dir);
+      renderTable(sorted);
+      buildLegend(items);
+      updateKpis(items);
+      drawScatterWith(sorted);
+      renderClusterSummary(items);
+      renderHistograms(items);
+      renderFlagsGaps(items);
+      updateTopN();
+      updateFairness();
+    }
+
+    function setLoading(on){
+      if (vizLoading) vizLoading.style.display = on ? 'flex' : 'none';
+      const disables = [clusterFilter, minSuccess, toggleLabels, topNInput, topMetricSelect, exportTopNBtn];
+      disables.forEach(el => { if (el) el.disabled = !!on; });
+      if (on){
+        // skeletons in tables
+        renderSkeletons();
+      }
+    }
+
+    function renderSkeletons(){
+      // Candidate table skeleton
+      tbody.innerHTML='';
+      for(let i=0;i<6;i++){
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td class="skeleton" style="height:16px"></td><td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td>`;
+        tbody.appendChild(tr);
+      }
+      // Top N table skeleton
+      if (topNTbody){
+        topNTbody.innerHTML='';
+        for(let i=0;i<5;i++){
+          const tr=document.createElement('tr');
+          tr.innerHTML = `<td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td><td class="skeleton"></td>`;
+          topNTbody.appendChild(tr);
+        }
+      }
+      // Cluster summary skeleton
+      if (clusterSummaryEl){
+        clusterSummaryEl.innerHTML='';
+        for(let i=0;i<3;i++){
+          const div=document.createElement('div'); div.className='card glass skeleton'; div.style.height='120px'; clusterSummaryEl.appendChild(div);
+        }
+      }
+    }
+
+    function sortItems(items, key, dir){
+      const arr = items.slice();
+      const isNum = (v)=> typeof v === 'number';
+      arr.sort((a,b)=>{
+        let va = a[key]; let vb = b[key];
+        if (key === 'what_if') { va = computeWhatIf(a, true); vb = computeWhatIf(b, true); }
+        if (key === 'filename'){ va = (a.filename||'').toLowerCase(); vb = (b.filename||'').toLowerCase(); }
+        const diff = (isNum(va)?va:0) - (isNum(vb)?vb:0);
+        if (isNaN(diff)) return String(va).localeCompare(String(vb));
+        return diff;
+      });
+      if (dir === 'desc') arr.reverse();
+      return arr;
+    }
+
+    function updateTopN(){
+      if (!topNInput || !topNTbody) return;
+      const n = Math.max(1, parseInt(topNInput.value) || 1);
+      const items = filtered();
+      let metric = topMetricSelect ? (topMetricSelect.value || 'overall_score') : 'overall_score';
+      // If What‑If ranking is enabled, override metric to What‑If regardless of selector
+      if (whatIfEnable && whatIfEnable.checked) metric = 'what_if';
+      let sorted;
+      if (metric === 'what_if'){
+        sorted = items.slice().sort((a,b)=> computeWhatIf(b, true) - computeWhatIf(a, true));
+      } else {
+        sorted = items.slice().sort((a,b)=> (b[metric]||0) - (a[metric]||0));
+      }
+      renderTopN(sorted.slice(0, n), metric);
+    }
+
+    function renderTopN(items, metric){
+      topNTbody.innerHTML = '';
+      // baseline ranks by success for delta
+      const base = filtered().slice().sort((a,b)=> (b.success_score||0)-(a.success_score||0));
+      const basePos = new Map(base.map((r,i)=>[r.filename||'', i+1]));
+      items.forEach((r, idx) => {
+        const tr = document.createElement('tr');
+        const fname = (r.filename||'').split(/[\\/]/).pop();
+        const whatIf = computeWhatIf(r, metric==='what_if');
+        const delta = (metric==='what_if') ? ((basePos.get(r.filename||'')||idx+1) - (idx+1)) : 0;
+        tr.innerHTML = `
+          <td>${idx+1}</td>
+          <td title="${escapeHtml(r.redaction_notes||'')}">${escapeHtml(fname)}</td>
+          <td>${pct(r.overall_score)}</td>
+          <td>${pct(r.semantic_score)}</td>
+          <td>${Math.round((r.hard_skill_coverage||0)*100)}%</td>
+          <td title="${(r.success_explain||[]).join(' | ')}">${pct(r.success_score)}</td>
+          <td>${(metric==='what_if' || (whatIfEnable&&whatIfEnable.checked)) ? pct(whatIf): '—'}</td>
+          <td>${metric==='what_if' ? (delta===0?'—': (delta>0?`▲${delta}`:`▼${-delta}`)) : '—'}</td>
+        `;
+        topNTbody.appendChild(tr);
+      });
+    }
+
+    function exportTopNCsv(){
+      const n = Math.max(1, parseInt(topNInput.value) || 1);
+      const metric = topMetricSelect ? (topMetricSelect.value || 'overall_score') : 'overall_score';
+      const itemsAll = filtered();
+      const items = (metric==='what_if') ? itemsAll.slice().sort((a,b)=> computeWhatIf(b,true)-computeWhatIf(a,true)).slice(0,n)
+        : itemsAll.slice().sort((a,b)=> (b[metric]||0) - (a[metric]||0)).slice(0,n);
+      const rows = [
+        ['rank','filename','overall','keyword','semantic','hard_coverage','success','what_if']
+      ].concat(items.map((r,i)=>[
+        i+1,
+        r.filename||'',
+        (r.overall_score||0),
+        (r.keyword_score||0),
+        (r.semantic_score||0),
+        (r.hard_skill_coverage||0),
+        (r.success_score||0),
+        computeWhatIf(r, metric==='what_if')||0
+      ]));
+      const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'topN_resumes.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }
+
+    function exportPdfReport(){ window.print(); }
+
+    // What‑If score computation and persistence
+    function computeWhatIf(r, force=false){
+      if (!force && (!whatIfEnable || !whatIfEnable.checked)) return 0;
+      const wO = Math.max(0, Math.min(100, parseInt(wOverall?.value||'55')||55));
+      const wS = Math.max(0, Math.min(100, parseInt(wSemantic?.value||'10')||10));
+      const wH = Math.max(0, Math.min(100, parseInt(wHard?.value||'15')||15));
+      const sum = (wO + wS + wH) || 1;
+      const nO = wO/sum, nS = wS/sum, nH = wH/sum;
+      const vO = (r.overall_score||0);
+      const vS = (r.semantic_score||0);
+      const vH = (r.hard_skill_coverage||0);
+      let score = nO*vO + nS*vS + nH*vH;
+      return Math.max(0, Math.min(1, score));
+    }
+    function saveWhatIf(){
+      try{
+        localStorage.setItem('what_if', JSON.stringify({
+          enable: !!whatIfEnable?.checked,
+          wO: parseInt(wOverall?.value||'55')||55,
+          wS: parseInt(wSemantic?.value||'10')||10,
+          wH: parseInt(wHard?.value||'15')||15,
+        }));
+      }catch(e){}
+    }
+    (function restoreWhatIf(){
+      try{
+        const cfg = JSON.parse(localStorage.getItem('what_if')||'null');
+        if (!cfg) return;
+        if (whatIfEnable) whatIfEnable.checked = !!cfg.enable;
+        if (wOverall && Number.isFinite(cfg.wO)) wOverall.value = String(cfg.wO);
+        if (wSemantic && Number.isFinite(cfg.wS)) wSemantic.value = String(cfg.wS);
+        if (wHard && Number.isFinite(cfg.wH)) wHard.value = String(cfg.wH);
+      }catch(e){}
+    })();
+
+    function updateKpis(items){
+      const n = items.length;
+      const clusters = new Set(items.map(r => r.cluster_id)).size;
+      const avgSuccess = items.length ? Math.round(100 * items.reduce((a,b)=>a+(b.success_score||0),0)/items.length) : 0;
+      kpiTotal.textContent = n;
+      kpiClusters.textContent = clusters;
+      kpiAvgSuccess.textContent = `${avgSuccess}%`;
+    }
+
+    function buildLegend(items){
+      legend.innerHTML = '';
+      const clset = Array.from(new Set(items.map(r => r.cluster_id))).sort((a,b)=>a-b);
+      colors = {};
+      const pal = ['#22d3ee','#34d399','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+      clset.forEach((c,i)=>{ colors[c] = pal[i % pal.length]; });
+      clset.forEach(c => {
+        const div = document.createElement('div');
+        const hidden = view.hiddenClusters.has(parseInt(c));
+        div.className = 'item';
+        div.style.opacity = hidden ? '0.45' : '1';
+        div.style.cursor = 'pointer';
+        div.title = hidden ? 'Show cluster' : 'Hide cluster';
+        div.innerHTML = `<span class="swatch" style="background:${colors[c]}"></span> Cluster ${c}`;
+        div.addEventListener('click', ()=>{
+          const cid = parseInt(c);
+          if (view.hiddenClusters.has(cid)) view.hiddenClusters.delete(cid);
+          else view.hiddenClusters.add(cid);
+          updateAll();
+        });
+        legend.appendChild(div);
+      });
+      // add sort indicator on headers
+      document.querySelectorAll('#candTable thead [data-sort]').forEach(th => {
+        const key = th.getAttribute('data-sort');
+        const base = th.textContent.split(' ')[0];
+        if (key === sortState.key){ th.innerHTML = `${base} ${sortState.dir==='asc'?'▲':'▼'}`; th.classList.add('th-sort'); }
+        else { th.innerHTML = base; th.classList.remove('th-sort'); }
+      });
+    }
+
+    function normalizeCoords(items){
+      const xs = items.map(r => (r.pca && typeof r.pca.x==='number') ? r.pca.x : 0);
+      const ys = items.map(r => (r.pca && typeof r.pca.y==='number') ? r.pca.y : 0);
+      const minX = Math.min(...xs, -1), maxX = Math.max(...xs, 1);
+      const minY = Math.min(...ys, -1), maxY = Math.max(...ys, 1);
+      const pad = 30; // px
+      const W = canvas.width, H = canvas.height;
+      return items.map(r => {
+        const x = (r.pca && typeof r.pca.x==='number') ? r.pca.x : 0;
+        const y = (r.pca && typeof r.pca.y==='number') ? r.pca.y : 0;
+        const nx = pad + (x - minX) / (maxX - minX || 1) * (W - 2*pad);
+        const ny = pad + (maxY - y) / (maxY - minY || 1) * (H - 2*pad);
+        return { ...r, _nx: nx, _ny: ny };
+      });
+    }
+
+    function drawScatter(){
+      drawScatterWith(filtered());
+    }
+
+    function drawScatterWith(items){
+      const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+      ctx.fillStyle = isDark ? '#0b1220' : '#ffffff';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+
+      if (!items.length) {
+        ctx.fillStyle = isDark ? '#8aa0b6' : '#4b5563';
+        ctx.font = '500 16px Outfit, system-ui, sans-serif';
+        ctx.fillText('Run analytics to visualize candidates', 20, 30);
+        return;
+      }
+
+      const itemsN = normalizeCoords(items);
+      lastPositions = itemsN.map((r, i) => ({ i, x: r._nx, y: r._ny, key: (r.filename||'') }));
+      const showLabels = toggleLabels.checked;
+
+      // axes
+      ctx.strokeStyle = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(30, canvas.height/2); ctx.lineTo(canvas.width-30, canvas.height/2);
+      ctx.moveTo(canvas.width/2, 20); ctx.lineTo(canvas.width/2, canvas.height-20);
+      ctx.stroke();
+
+      // points
+      itemsN.forEach(r => {
+        const c = colors[r.cluster_id] || '#22d3ee';
+        const size = 6 + Math.round(6*(r.success_score||0));
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.arc(r._nx, r._ny, size, 0, Math.PI*2);
+        ctx.fill();
+        // selected ring
+        if (selectedIdx>=0){
+          const sel = lastPositions[selectedIdx];
+          if (sel && sel.key === (r.filename||'')){
+            ctx.strokeStyle = '#f59e0b'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(r._nx, r._ny, size+3, 0, Math.PI*2); ctx.stroke();
+          }
+        }
+        if (showLabels){
+          ctx.fillStyle = isDark ? '#d8e1eb' : '#111827';
+          ctx.font = '500 12px Outfit, system-ui, sans-serif';
+          const label = (r.filename||'').split(/[\\/]/).pop();
+          ctx.fillText(label, r._nx + 8, r._ny - 8);
+        }
+      });
+
+      // brush rectangle
+      if (brushRect){
+        const x0=Math.min(brushRect.x0,brushRect.x1), x1=Math.max(brushRect.x0,brushRect.x1);
+        const y0=Math.min(brushRect.y0,brushRect.y1), y1=Math.max(brushRect.y0,brushRect.y1);
+        ctx.strokeStyle = '#34d399'; ctx.setLineDash([6,4]); ctx.lineWidth=2;
+        ctx.strokeRect(x0,y0,x1-x0,y1-y0);
+        ctx.setLineDash([]);
+      }
+    }
+
+    // Hover tooltip and click-to-focus on scatter
+    const tip = document.getElementById('scatterTip');
+    canvas.addEventListener('mousemove', (e) => {
+      if (isBrushing){
+        const rect = canvas.getBoundingClientRect();
+        brushRect.x1 = e.clientX - rect.left; brushRect.y1 = e.clientY - rect.top;
+        drawScatterWith(filtered());
+        return;
+      }
+      if (!lastPositions.length) { tip.style.display = 'none'; return; }
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
+      const nearest = findNearest(mx, my);
+      if (!nearest) { tip.style.display = 'none'; return; }
+      const r = (results||[]).find(x => (x.filename||'') === nearest.key) || results[nearest.i];
+      tip.style.display = 'block';
+      tip.style.left = (e.pageX + 12) + 'px';
+      tip.style.top = (e.pageY + 12) + 'px';
+      tip.innerHTML = `${escapeHtml((r.filename||'').split(/[\\/]/).pop())}<br/>Cluster ${r.cluster_id} • Success ${Math.round((r.success_score||0)*100)}%`;
+    });
+    canvas.addEventListener('mouseleave', ()=>{ tip.style.display='none'; });
+    canvas.addEventListener('click', (e) => {
+      if (!lastPositions.length) return;
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
+      const nearest = findNearest(mx, my);
+      if (!nearest) return;
+      const r = (results||[]).find(x => (x.filename||'') === nearest.key) || results[nearest.i];
+      focusRowByFilename(r.filename||'');
+      if (r) openExplain(r);
+    });
+
+    let isBrushing = false;
+    canvas.addEventListener('mousedown', (e)=>{
+      const rect = canvas.getBoundingClientRect();
+      isBrushing = true; brushRect = { x0: e.clientX-rect.left, y0: e.clientY-rect.top, x1: e.clientX-rect.left, y1: e.clientY-rect.top };
+    });
+    window.addEventListener('mouseup', ()=>{
+      if (isBrushing){ isBrushing=false; updateAll(); }
+    });
+
+    // Keyboard navigation: arrows to move selection, Enter to focus row
+    document.addEventListener('keydown', (e)=>{
+      if (!lastPositions.length) return;
+      const keys = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter'];
+      if (!keys.includes(e.key)) return;
+      if (e.key==='Enter'){
+        const sel = lastPositions[Math.max(0,selectedIdx)]; if (sel){ const r = (results||[]).find(x => (x.filename||'')===sel.key); if (r) focusRowByFilename(r.filename||''); }
+        return;
+      }
+      e.preventDefault();
+      if (selectedIdx<0) selectedIdx = 0; else {
+        if (e.key==='ArrowLeft' || e.key==='ArrowUp') selectedIdx = Math.max(0, selectedIdx-1);
+        if (e.key==='ArrowRight' || e.key==='ArrowDown') selectedIdx = Math.min(lastPositions.length-1, selectedIdx+1);
+      }
+      drawScatterWith(filtered());
+    });
+
+    function findNearest(x, y){
+      let best = null; let bd = 1e12;
+      for (const p of lastPositions){
+        const dx = p.x - x, dy = p.y - y; const d2 = dx*dx + dy*dy;
+        if (d2 < bd) { bd = d2; best = p; }
+      }
+      const rad2 = 14*14; // within 14px
+      return (bd <= rad2) ? best : null;
+    }
+
+    function focusRowByFilename(fname){
+      const rows = Array.from(document.querySelectorAll('#candTable tbody tr'));
+      rows.forEach(r => r.classList.remove('row-focus'));
+      const target = rows.find(r => (r.getAttribute('data-key')||'') === fname);
+      if (target){ target.classList.add('row-focus'); target.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    }
+
+    function renderTable(items){
+      tbody.innerHTML = '';
+      if (!items.length){
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 13;
+        td.innerHTML = `No candidates match the current filters. <button id="clearFiltersBtn" class="mini" style="margin-left:8px">Clear filters</button>`;
+        tr.appendChild(td); tbody.appendChild(tr);
+        const btn = td.querySelector('#clearFiltersBtn');
+        if (btn) btn.addEventListener('click', clearFilters);
+        return;
+      }
+      items.forEach((r, idx) => {
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-key', r.filename||'');
+        const fname = (r.filename||'').split(/[\\/]/).pop();
+        const neighbors = (r.neighbors||[]).slice(0,3).map(n => `${escapeHtml(n.filename||'')} (${Math.round((n.sim||0)*100)}%)`).join(', ') || '—';
+        const flags = (r.flags||[]).map(f => `<span class="flag">${escapeHtml(f)}</span>`).join(' ') || '—';
+        const group = groupMap[r.filename||''] || '';
+        const groupSelect = `
+          <select data-group style="border-radius:8px;padding:4px;background:var(--surface-2);border:1px solid var(--surface-3);color:var(--text)">
+            <option value="">Unassigned</option>
+            <option value="group_a">Group A</option>
+            <option value="group_b">Group B</option>
+            <option value="group_c">Group C</option>
+            <option value="custom">Custom…</option>
+          </select>`;
+        const riskLabel = String(r.risk_label||'').toLowerCase();
+        const riskReasons = Array.isArray(r.risk_reasons)? r.risk_reasons.join(', ') : '';
+        const riskColor = riskLabel==='high' ? '#ef4444' : (riskLabel==='medium' ? '#f59e0b' : '#34d399');
+        const riskCell = `<span class="badge" title="${escapeHtml(riskReasons)}" style="border-color:${riskColor};color:${riskColor}">${escapeHtml(r.risk_label||'—')}</span>`;
+        tr.innerHTML = `
+          <td>${idx+1}</td>
+          <td title="${escapeHtml(r.redaction_notes||'')}">${escapeHtml(fname)} <button class="mini ghost" data-explain="${encodeURIComponent(r.filename||'')}" onclick="window.__openExplainByKey && window.__openExplainByKey(decodeURIComponent(this.getAttribute('data-explain')))">Explain</button></td>
+          <td>${r.cluster_id}</td>
+          <td title="${(r.overall_explain||[]).join(' | ')}">${pct(r.overall_score)}</td>
+          <td>${pct(r.confidence)}</td>
+          <td>${riskCell}</td>
+          <td>${pct(r.keyword_score)}</td>
+          <td>${pct(r.semantic_score)}</td>
+          <td>${Math.round((r.hard_skill_coverage||0)*100)}%</td>
+          <td title="${(r.success_explain||[]).join(' | ')}">${pct(r.success_score)}</td>
+          <td class="neighbors">${neighbors}</td>
+          <td>${groupSelect}</td>
+          <td>${flags}</td>
+        `;
+        const sel = tr.querySelector('[data-group]');
+        if (sel){ sel.value = ['group_a','group_b','group_c'].includes(group) ? group : (group? 'custom':'');
+          if (sel.value==='custom'){ const opt = document.createElement('option'); opt.value = group; opt.textContent = group; sel.appendChild(opt); sel.value = group; }
+          sel.addEventListener('change', ()=>{
+            let val = sel.value;
+            if (val==='custom'){
+              const input = prompt('Enter custom group label (e.g., Female, Male, Nonbinary, College A, etc.):', '');
+              if (input){ val = input.trim(); const opt = document.createElement('option'); opt.value=val; opt.textContent=val; sel.appendChild(opt); sel.value = val; }
+              else { sel.value=''; val=''; }
+            }
+            groupMap[r.filename||''] = val;
+            saveGroupMap();
+            updateFairness();
+          });
+        }
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Explainability panel
+    const explainOverlay = document.getElementById('explainOverlay');
+    const explainBody = document.getElementById('explainBody');
+    const explainClose = document.getElementById('explainClose');
+    const explainCopy = document.getElementById('explainCopy');
+    const explainExport = document.getElementById('explainExport');
+    let lastExplainRec = null;
+    if (explainClose) explainClose.addEventListener('click', ()=> closeExplain());
+    if (explainOverlay) explainOverlay.addEventListener('click', (e)=>{ if (e.target===explainOverlay) closeExplain(); });
+    document.addEventListener('keydown', (e)=>{ if (e.key==='Escape') closeExplain(); });
+    if (explainCopy) explainCopy.addEventListener('click', ()=>{ if (!lastExplainRec) return; try{ navigator.clipboard.writeText(JSON.stringify(lastExplainRec, null, 2)); showToast('Explanation copied'); }catch(e){ showToast('Copy failed'); } });
+    if (explainExport) explainExport.addEventListener('click', ()=>{ if (!lastExplainRec) return; const blob = new Blob([JSON.stringify(lastExplainRec,null,2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=(lastExplainRec.filename||'explanation')+'.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
+
+    function openExplain(rec){
+      if (!explainOverlay || !explainBody) return;
+      lastExplainRec = rec;
+      const name = (rec.filename||'').split(/[\\/]/).pop();
+      document.getElementById('explainTitle').textContent = `Why this rank — ${name}`;
+      const reasons = rec.success_explain || [];
+      // Parse success_explain entries like "overall*0.55=0.303"
+      const parts = [];
+      const LAB = { overall:'Overall match', trend:'Experience trend', hard_cov:'Hard-skill coverage', semantic:'Semantic match', penalty:'Penalty' };
+      const HELP = {
+        overall: 'Blends all evidence about fit for this role.',
+        trend: 'Recent experience trajectory (upwards is better).',
+        hard_cov: 'How many must-have skills are covered.',
+        semantic: 'Meaning-level similarity to the job description.',
+        penalty: 'Flags (gaps, overlaps, etc.) reduce the score.'
+      };
+      reasons.forEach(r => {
+        try{
+          const m = String(r).match(/([a-z_]+)\*([0-9.]+)=(-?[0-9.]+)/i);
+          if (!m) return;
+          const key = m[1];
+          const weight = parseFloat(m[2]);
+          const contrib = parseFloat(m[3]);
+          if (!isNaN(weight) && !isNaN(contrib)) parts.push({ key, weight, contrib });
+        }catch(e){}
+      });
+      const barsHtml = parts.map(p => {
+        const pctW = Math.round((p.weight||0)*100);
+        const pctC = Math.round((p.contrib||0)*100);
+        const width = Math.min(100, Math.max(0, Math.round(Math.abs(p.contrib||0)*100)));
+        const nice = LAB[p.key] || p.key;
+        const help = HELP[p.key] || '';
+        const sign = (p.contrib||0) >= 0 ? '+' : '';
+        return `
+          <div class="bar-row">
+            <div class="bar-label"><strong>${escapeHtml(nice)}</strong><div class="hint">${pctW}% weight • ${escapeHtml(help)}</div></div>
+            <div class="bar"><div class="bar-fill ${p.contrib<0?'neg':''}" style="width:${width}%"></div></div>
+            <div style="width:54px;text-align:right">${sign}${pctC}%</div>
+          </div>`;
+      }).join('');
+      const mk = (label, val) => `<div class="explain-row"><div>${label}</div><div><strong>${val}</strong></div></div>`;
+      const pctv = (v)=> `${Math.round((v||0)*100)}%`;
+      const flags = (rec.flags||[]).map(f=>`<span class="badge">${escapeHtml(f)}</span>`).join(' ') || '—';
+      const missing = (rec.missing_hard_skills||[]).map(s=>`<span class="badge">${escapeHtml(s)}</span>`).join(' ') || '—';
+      const gaps = (rec.gaps||[]).map(g=>`${g.start} → ${g.end} (${g.days}d)`).join(', ') || '—';
+      const overlaps = (rec.overlaps||[]).map(g=>`${g.start} → ${g.end} (${g.days}d)`).join(', ') || '—';
+      const neigh = (rec.neighbors||[]).slice(0,5).map(n=>`${escapeHtml((n.filename||'').split(/[\\/]/).pop())} (${Math.round((n.sim||0)*100)}%)`).join(', ') || '—';
+      // Profile details (contacts, certifications, education)
+      const email = (rec.contacts && rec.contacts.email) ? String(rec.contacts.email) : '';
+      const phone = (rec.contacts && rec.contacts.phone) ? String(rec.contacts.phone) : '';
+      const linksArr = (rec.contacts && Array.isArray(rec.contacts.links)) ? rec.contacts.links.slice(0,5) : [];
+      const linksHtml = linksArr.map(u=>`<a href="${escapeHtml(u)}" target="_blank" rel="noopener">${escapeHtml(u)}</a>`).join('<br>');
+      const contactsHtml = (email || phone || linksArr.length)
+        ? [`Email: ${email? `<strong>${escapeHtml(email)}</strong>`:'—'}`, `Phone: ${phone? `<strong>${escapeHtml(phone)}</strong>`:'—'}`, linksArr.length? `Links:<br>${linksHtml}`:'' ].filter(Boolean).join('<br>')
+        : '—';
+      const certsHtml = (rec.certifications||[]).map(c=>`<span class="badge">${escapeHtml(String(c))}</span>`).join(' ') || '—';
+      const eduNorm = Array.isArray(rec.education_normalized) ? rec.education_normalized : [];
+      const eduHtml = eduNorm.length ? eduNorm.map(e=>`<span class="badge">${escapeHtml(String(e.level||'').toUpperCase())}</span>`).join(' ') : '—';
+
+      // Determine current ranking metric and candidate rank within current filtered view
+      const metricLabelMap = { overall_score: 'Overall', success_score: 'Success', semantic_score: 'Semantic', what_if: 'What‑If' };
+      let metricKey = (whatIfEnable && whatIfEnable.checked) ? 'what_if' : (topMetricSelect ? (topMetricSelect.value||'overall_score') : 'overall_score');
+      let viewItems = filtered();
+      let rankIdx = -1;
+      if (metricKey === 'what_if'){
+        const sorted = viewItems.slice().sort((a,b)=> computeWhatIf(b, true) - computeWhatIf(a, true));
+        rankIdx = sorted.findIndex(x => (x.filename||'') === (rec.filename||''));
+      } else {
+        const sorted = viewItems.slice().sort((a,b)=> (b[metricKey]||0) - (a[metricKey]||0));
+        rankIdx = sorted.findIndex(x => (x.filename||'') === (rec.filename||''));
+      }
+      const rankText = (rankIdx>=0) ? `Ranked ${rankIdx+1} of ${viewItems.length} by ${metricLabelMap[metricKey]||metricKey}` : `Ranking based on ${metricLabelMap[metricKey]||metricKey}`;
+
+      // Build a short, beginner-friendly summary
+      const strengths = [];
+      if ((rec.hard_skill_coverage||0) >= 0.9) strengths.push('covers most required skills');
+      if ((rec.semantic_score||0) >= 0.75) strengths.push('strong match to job description');
+      if ((rec.overall_score||0) >= 0.75) strengths.push('high overall fit');
+      if ((rec.success_score||0) >= 0.75) strengths.push('high predicted success');
+      const cautions = [];
+      const missCount = (rec.missing_hard_skills||[]).length;
+      if (missCount) cautions.push(`${missCount} missing must‑have ${missCount>1?'skills':'skill'}`);
+      if ((rec.flags||[]).length) cautions.push('review flags');
+      const sumLine = `This candidate ${strengths.length? (''+strengths[0] + (strengths[1]? ' and ' + strengths[1] : '')) : 'has relevant qualifications'}.`;
+      const whyHire = strengths.length ? `Why consider: ${strengths.map(s=>s[0].toUpperCase()+s.slice(1)).join('; ')}.` : 'Why consider: relevant profile and experience.';
+      const whyRank = `Why this rank: ${rankText.toLowerCase()}. ${cautions.length? ('Cautions: ' + cautions.join('; ') + '.') : ''}`;
+      explainBody.innerHTML = `
+        <div class="card glass">
+          <div class="header-row"><h4 class="card-title" style="margin:0">Summary</h4></div>
+          <div class="body">
+            <p>${escapeHtml(sumLine)}</p>
+            <p>${escapeHtml(whyHire)}</p>
+            <p>${escapeHtml(whyRank)}</p>
+          </div>
+        </div>
+        <div class="metric-grid">
+          ${mk('Overall score', pctv(rec.overall_score))}
+          ${mk('Confidence', pctv(rec.confidence))}
+          ${mk('Semantic score', pctv(rec.semantic_score))}
+          ${mk('Keyword score', pctv(rec.keyword_score))}
+          ${mk('Hard-skill coverage', `${Math.round((rec.hard_skill_coverage||0)*100)}%`)}
+          ${mk('Success score', pctv(rec.success_score))}
+          ${mk('Cluster', String(rec.cluster_id))}
+        </div>
+        <div class="card glass">
+          <div class="header-row"><h4 class="card-title" style="margin:0">Overall score breakdown</h4></div>
+          <div class="body">
+            <p class="hint">Overall = weighted combination of keyword, semantic, and trend signals, adjusted by bonuses and penalties.</p>
+            <div>${(rec.overall_explain||[]).map(x=>`<div class='explain-row'><div>${escapeHtml(String(x).split('=')[0])}</div><div><strong>${escapeHtml(String(x).split('=')[1]||'')}</strong></div></div>`).join('') || '<em>No breakdown available</em>'}</div>
+          </div>
+        </div>
+        <div class="card glass">
+          <div class="header-row"><h4 class="card-title" style="margin:0">Profile</h4></div>
+          <div class="body">
+            <div class="explain-row"><div>Contacts</div><div>${contactsHtml}</div></div>
+            <div class="explain-row"><div>Certifications</div><div>${certsHtml}</div></div>
+            <div class="explain-row"><div>Education (normalized)</div><div>${eduHtml}</div></div>
+          </div>
+        </div>
+        <div class="card glass">
+          <div class="header-row"><h4 class="card-title" style="margin:0">Success score breakdown</h4></div>
+          <div class="body">
+            <p class="hint">Each bar shows how much this factor adds or subtracts from the Success score.</p>
+            <div class="bar-rows">${barsHtml || '<em>No breakdown available</em>'}</div>
+            <p class="hint">Success = weighted sum of factors minus penalties, capped between 0% and 100%.</p>
+          </div>
+        </div>
+        <div class="card glass">
+          <div class="header-row"><h4 class="card-title" style="margin:0">Flags</h4></div>
+          <div class="body">${flags}</div>
+        </div>
+        <div class="card glass">
+          <div class="header-row"><h4 class="card-title" style="margin:0">Missing hard skills</h4></div>
+          <div class="body">${missing}</div>
+        </div>
+        <div class="card glass">
+          <div class="header-row"><h4 class="card-title" style="margin:0">Timeline diagnostics</h4></div>
+          <div class="body">
+            ${mk('Gaps', gaps)}
+            ${mk('Overlaps', overlaps)}
+          </div>
+        </div>
+        <div class="card glass">
+          <div class="header-row"><h4 class="card-title" style="margin:0">Nearest candidates</h4></div>
+          <div class="body">${neigh}</div>
+        </div>
+      `;
+      explainOverlay.style.display = 'flex';
+    }
+
+    function closeExplain(){ if (explainOverlay){ explainOverlay.style.display='none'; } }
+
+    // Robust global opener for inline buttons
+    function openExplainByKey(key){
+      try{
+        const rec = (results||[]).find(r=> (r.filename||'')===key);
+        if (rec) openExplain(rec);
+      }catch(e){ console.error('openExplainByKey error', e); }
+    }
+    window.__openExplainByKey = openExplainByKey;
+
+    // Delegate explain button
+    if (tbody){
+      tbody.addEventListener('click', (e)=>{
+        const btn = e.target.closest('[data-explain]');
+        if (!btn) return;
+        const key = decodeURIComponent(btn.getAttribute('data-explain')||'');
+        const rec = (results||[]).find(r=> (r.filename||'')===key);
+        if (rec) openExplain(rec);
+      });
+    }
+
+    function loadGroupMap(){
+      try { return JSON.parse(localStorage.getItem('group_tags')||'{}'); } catch(e){ return {}; }
+    }
+    function saveGroupMap(){ try { localStorage.setItem('group_tags', JSON.stringify(groupMap)); } catch(e){} }
+
+    function updateFairness(){
+      const items = filtered();
+      if (!fairnessThresh) return;
+      const thr = Math.max(0, Math.min(100, parseInt(fairnessThresh.value)||80));
+      const by = new Map();
+      items.forEach(r => {
+        const key = groupMap[r.filename||''] || 'Unassigned';
+        if (!by.has(key)) by.set(key, []);
+        by.get(key).push(r);
+      });
+      const groups = Array.from(by.keys());
+      const rows = groups.map(g => {
+        const arr = by.get(g)||[];
+        const n = arr.length;
+        const sel = arr.filter(x => Math.round((x.success_score||0)*100) >= thr).length;
+        const rate = n? sel/n : 0;
+        const avgOverall = n? arr.reduce((s,x)=>s+(x.overall_score||0),0)/n : 0;
+        const avgSuccess = n? arr.reduce((s,x)=>s+(x.success_score||0),0)/n : 0;
+        return { group:g, n, sel, rate, avgOverall, avgSuccess };
+      });
+      const maxRate = Math.max(0, ...rows.map(r=>r.rate));
+      rows.forEach(r => { r.disparateImpact = maxRate? (r.rate / maxRate) : 0; r.rule80 = (r.disparateImpact >= 0.8) ? 'OK' : (r.group==='Unassigned' ? '—' : 'FAIL'); });
+      renderFairnessTable(rows, thr);
+      drawFairnessBars(rows);
+      // Summary: show worst DI among sufficiently large groups and warnings for small samples
+      if (fairnessSummary){
+        const LARGE_N = 5;
+        const considered = rows.filter(r => r.group !== 'Unassigned');
+        const small = considered.filter(r => r.n < LARGE_N).map(r=>`${r.group} (n=${r.n})`);
+        const diMin = considered.length ? Math.min(...considered.map(r=>r.disparateImpact||0)) : 0;
+        const diPct = (diMin*100).toFixed(1) + '%';
+        const anyFail = considered.some(r => r.rule80==='FAIL');
+        const msg = [`Worst DI: ${diPct} ${anyFail? '— below 80% rule in at least one group':''}`];
+        if (small.length) msg.push(`Small samples: ${small.join(', ')}`);
+        fairnessSummary.textContent = msg.join(' • ');
+      }
+    }
+
+    function renderFairnessTable(rows, thr){
+      if (!fairnessTable) return;
+      if (!rows.length){ fairnessTable.innerHTML = '<em>No groups defined yet. Assign groups in the Candidate Insights table.</em>'; return; }
+      const html = [`<table class="tbl"><thead><tr><th>Group</th><th>Total</th><th>Selected (≥${thr}%)</th><th>Selection Rate</th><th>Avg Overall</th><th>Avg Success</th><th>Disparate Impact</th><th>80% Rule</th></tr></thead><tbody>`]
+        .concat(rows.map(r=>`<tr><td>${escapeHtml(r.group)}</td><td>${r.n}</td><td>${r.sel}</td><td>${Math.round(r.rate*100)}%</td><td>${Math.round(r.avgOverall*100)}%</td><td>${Math.round(r.avgSuccess*100)}%</td><td>${(r.disparateImpact*100).toFixed(1)}%</td><td>${r.rule80}</td></tr>`))
+        .concat(['</tbody></table>']).join('');
+      fairnessTable.innerHTML = html;
+    }
+
+    function drawFairnessBars(rows){
+      const c = fairnessBars; if (!c) return; const g = c.getContext('2d');
+      const W=c.width, H=c.height; const pad=30; g.clearRect(0,0,W,H);
+      const n = rows.length || 1; const bw=(W-2*pad)/n; const max=1.0;
+      g.fillStyle = '#0b1220'; g.fillRect(0,0,W,H);
+      rows.forEach((r,i)=>{
+        const h=(H-2*pad)*(r.rate/max); const x=pad+i*bw; const y=H-pad-h;
+        g.fillStyle = (r.disparateImpact<0.8 && r.group!=='Unassigned') ? '#ef4444' : '#34d399';
+        g.fillRect(x+6,y,bw-12,h);
+        g.fillStyle = '#9ca3af'; g.font='12px Outfit, sans-serif';
+        g.fillText(`${Math.round(r.rate*100)}%`, x+6, y-4);
+        g.fillText(r.group.slice(0,10), x+6, H-8);
+      });
+      g.fillStyle='#9ca3af'; g.fillText('0%', 4, H-8); g.fillText('100%', 4, 12);
+    }
+
+    function exportFairnessCsv(){
+      const thr = Math.max(0, Math.min(100, parseInt(fairnessThresh.value)||80));
+      const items = filtered();
+      const by = new Map();
+      items.forEach(r => { const key = groupMap[r.filename||''] || 'Unassigned'; if (!by.has(key)) by.set(key, []); by.get(key).push(r); });
+      const rows = [['group','total','selected','selection_rate','avg_overall','avg_success','disparate_impact','rule_80',`threshold_${thr}`]];
+      const tmp = [];
+      by.forEach((arr, g)=>{
+        const n=arr.length; const sel=arr.filter(x=>Math.round((x.success_score||0)*100)>=thr).length; const rate=n?sel/n:0; const avgO=n?arr.reduce((s,x)=>s+(x.overall_score||0),0)/n:0; const avgS=n?arr.reduce((s,x)=>s+(x.success_score||0),0)/n:0; tmp.push({g,n,sel,rate,avgO,avgS});
+      });
+      const maxRate = Math.max(0, ...tmp.map(r=>r.rate));
+      tmp.forEach(r=>{ const di = maxRate? (r.rate/maxRate):0; const rule = (di>=0.8 || r.g==='Unassigned') ? 'OK':'FAIL'; rows.push([r.g,r.n,r.sel,(r.rate).toFixed(4),r.avgO.toFixed(4),r.avgS.toFixed(4),di.toFixed(4),rule,thr]); });
+      const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='fairness_report.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }
+
+    function pct(v){ return `${Math.round((v||0)*100)}%`; }
+    function escapeHtml(str){ return (str||'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+        // Cluster summary
+    function renderClusterSummary(items){
+      if (!clusterSummaryEl) return;
+      clusterSummaryEl.innerHTML = '';
+      const by = new Map();
+      items.forEach(r => { const k = r.cluster_id; if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
+      const entries = Array.from(by.entries()).sort((a,b)=>a[0]-b[0]);
+      entries.forEach(([cid, arr]) => {
+        const avg = (key) => arr.reduce((s,x)=>s+(+x[key]||0),0) / (arr.length||1);
+        const flags = {}; const skillFreq = {};
+        arr.forEach(r => {
+          (r.flags||[]).forEach(f=>{ flags[f]=(flags[f]||0)+1; });
+          (r.skills||[]).forEach(s=>{ const k=String(s).toLowerCase(); skillFreq[k]=(skillFreq[k]||0)+1; });
+        });
+        const topFlags = Object.entries(flags).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} (${v})`).join(', ') || '—';
+        const topSkills = Object.entries(skillFreq).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k])=>k).join(', ') || '—';
+        const card = document.createElement('div');
+        card.className = 'card glass';
+        card.innerHTML = `
+          <h4 style="margin:0 0 6px">Cluster ${cid}</h4>
+          <div class="kpis" style="margin:6px 0">
+            <div class="kpi"><h4>Count</h4><div class="val">${arr.length}</div></div>
+            <div class="kpi"><h4>Overall</h4><div class="val">${Math.round(avg('overall_score')*100)}%</div></div>
+            <div class="kpi"><h4>Semantic</h4><div class="val">${Math.round(avg('semantic_score')*100)}%</div></div>
+          </div>
+          <div class="details-grid">
+            <div><h5>Top skills</h5><p>${escapeHtml(topSkills)}</p></div>
+            <div><h5>Top flags</h5><p>${escapeHtml(topFlags)}</p></div>
+            <div><h5>Avg success</h5><p>${Math.round(avg('success_score')*100)}%</p></div>
+          </div>`;
+        clusterSummaryEl.appendChild(card);
+      });
+    }
+
+    // Histograms
+    function renderHistograms(items){
+      drawHist('histOverall', 'Overall', items.map(x=>+x.overall_score||0));
+      drawHist('histSemantic', 'Semantic', items.map(x=>+x.semantic_score||0));
+      drawHist('histKeyword', 'Keyword', items.map(x=>+x.keyword_score||0));
+      drawHist('histSuccess', 'Success', items.map(x=>+x.success_score||0));
+    }
+    function drawHist(id, label, vals){
+      const c = document.getElementById(id); if (!c) return; const c2 = c.getContext('2d');
+      const bins = new Array(10).fill(0);
+      vals.forEach(v => { const i = Math.max(0, Math.min(9, Math.floor((v||0)*10))); bins[i]++; });
+      const prev = HIST_STATE.get(id) || new Array(10).fill(0);
+      const max = Math.max(1, ...bins);
+      const W=c.width, H=c.height; const pad=20; const bw = (W-2*pad)/bins.length;
+      let t=0; const steps=8;
+      function frame(){
+        c2.clearRect(0,0,W,H);
+        c2.fillStyle = '#1f2937'; c2.fillRect(0,0,W,H);
+        for(let i=0;i<bins.length;i++){
+          const curr = prev[i] + (bins[i]-prev[i]) * (t/steps);
+          const h = (H-2*pad) * (curr/max);
+          const x = pad + i*bw; const y = H-pad-h;
+          c2.fillStyle = i>=view.minSuccess/10 ? '#34d399' : '#22d3ee';
+          c2.fillRect(x, y, bw-4, Math.max(0,h));
+        }
+        c2.fillStyle = '#9ca3af'; c2.font='12px Outfit, sans-serif';
+        c2.fillText('0%', pad, H-4); c2.fillText('100%', W-pad-28, H-4);
+        if (t++<steps) requestAnimationFrame(frame);
+        else HIST_STATE.set(id, bins);
+      }
+      frame();
+      // tooltip interaction
+      const tip = document.getElementById('scatterTip');
+      c.onmousemove = (e)=>{
+        const rect = c.getBoundingClientRect(); const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
+        const idx = Math.max(0, Math.min(9, Math.floor((mx - pad)/bw)));
+        if (mx<pad || mx>W-pad || my<pad || my>H-pad){ tip.style.display='none'; return; }
+        const start = idx*10, end = start+10;
+        tip.style.display='block'; tip.style.left=(e.pageX+12)+'px'; tip.style.top=(e.pageY+12)+'px';
+        tip.innerHTML = `${label}: ${bins[idx]} candidates in ${start}–${end}%`;
+      };
+      c.onmouseleave = ()=>{ const tip = document.getElementById('scatterTip'); tip.style.display='none'; };
+    }
+
+    // Flags & gaps
+    function renderFlagsGaps(items){
+      if (!flagCountsEl || !gapSummaryEl) return;
+      const flagMap = new Map();
+      let gapDays = [];
+      items.forEach(r => {
+        (r.flags||[]).forEach(f=> flagMap.set(f, (flagMap.get(f)||0)+1));
+        (r.gaps||[]).forEach(g=>{ if (g && typeof g.days==='number') gapDays.push(g.days); });
+      });
+      const sortedFlags = Array.from(flagMap.entries()).sort((a,b)=>b[1]-a[1]);
+      flagCountsEl.innerHTML = sortedFlags.length? sortedFlags.map(([k,v])=>`<div>${escapeHtml(k)}: <strong>${v}</strong></div>`).join('') : '<em>No flags in current view</em>';
+      gapDays.sort((a,b)=>a-b);
+      if (!gapDays.length){ gapSummaryEl.innerHTML = '<em>No gaps in current view</em>'; return; }
+      const avg = Math.round(gapDays.reduce((s,x)=>s+x,0)/gapDays.length);
+      const p90 = gapDays[Math.min(gapDays.length-1, Math.floor(gapDays.length*0.9))];
+      const max = gapDays[gapDays.length-1];
+      gapSummaryEl.innerHTML = `Avg: <strong>${avg}</strong>, P90: <strong>${p90}</strong>, Max: <strong>${max}</strong>`;
+    }
+
+    function clearFilters(){
+      // clear selections
+      if (clusterFilter){ Array.from(clusterFilter.options).forEach(o=>o.selected=false); }
+      if (minSuccess){ minSuccess.value = '0'; }
+      view.hiddenClusters.clear();
+      captureFilters();
+      updateAll();
+    }
+  </script>
+</body>
+</html>

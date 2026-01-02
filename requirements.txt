@@ -1,0 +1,20 @@
+Flask==3.0.3
+Werkzeug==3.0.3
+Jinja2==3.1.4
+itsdangerous==2.2.0
+click==8.1.7
+
+spacy==3.7.4
+scikit-learn==1.5.2
+numpy==1.26.4
+scipy==1.13.1
+pandas==2.2.3
+
+pdfminer.six==20240706
+python-docx==1.1.2
+
+rapidfuzz==3.9.7
+python-dateutil==2.9.0.post0
+
+# optional, helpful
+joblib==1.4.2

@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Automated Resume Screener</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-grid">
+      <a class="brand" href="#home" aria-label="Automated Resume Screener home">
+        <div class="logo" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="g1" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#22d3ee"/>
+                <stop offset="1" stop-color="#34d399"/>
+              </linearGradient>
+            </defs>
+            <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#g1)"/>
+            <path d="M22 30c6-5 14-5 20 0v10c-6 5-14 5-20 0V30z" fill="rgba(255,255,255,.9)"/>
+            <circle cx="32" cy="28" r="6" fill="rgba(255,255,255,.92)"/>
+          </svg>
+        </div>
+        <div class="brand-txt">
+          <h1>Automated Resume Screener</h1>
+          <p class="subtitle">AI‑powered, data‑driven hiring assistant</p>
+        </div>
+      </a>
+      <nav class="main-nav" aria-label="Primary">
+        <a href="#home" class="nav-link">Home</a>
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#how" class="nav-link">How It Works</a>
+        <a href="#pricing" class="nav-link">Pricing</a>
+        <a href="#faq" class="nav-link">FAQ</a>
+        <a href="#contact" class="nav-link">Contact</a>
+        <a href="/dashboard" class="nav-link">HR Dashboard</a>
+      </nav>
+      <div class="actions">
+        <button id="themeToggle" class="icon-btn" aria-label="Toggle theme" title="Toggle theme">
+          <span class="icon">☾</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="home">
+    <section class="hero">
+      <div class="aurora" aria-hidden="true"></div>
+      <div class="container hero-content">
+        <h2 class="reveal">Find the right candidates faster</h2>
+        <p class="lead reveal-delay">Paste a job description, choose must‑have and nice‑to‑have skills, upload resumes, and get ranked results with helpful flags and insights.</p>
+        <div class="hero-cta reveal-delay2">
+          <a href="/dashboard" class="cta">Start Screening</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="container">
+      <div class="card glass rise">
+        <h3 class="card-title">Features</h3>
+        <div class="feature-grid">
+          <div class="feature">
+            <div class="feature-ic">⚙️</div>
+            <h4>Automated Parsing</h4>
+            <p>Extracts text from PDF/DOCX/TXT and builds candidate profiles with skills, education lines, and date ranges.</p>
+          </div>
+          <div class="feature">
+            <div class="feature-ic">🧠</div>
+            <h4>Smart Scoring</h4>
+            <p>Combines keyword coverage (hard > nice) with semantic similarity (TF‑IDF + cosine) for fair, fast ranking.</p>
+          </div>
+          <div class="feature">
+            <div class="feature-ic">🧭</div>
+            <h4>Guided Inputs</h4>
+            <p>Inline JD hints, examples, and a skill suggestion helper reduce confusion and ensure high‑quality inputs.</p>
+          </div>
+          <div class="feature">
+            <div class="feature-ic">🚩</div>
+            <h4>Flags & Gaps</h4>
+            <p>Highlights missing must‑have skills, potential duplicate claims, and 3+ month employment gaps.</p>
+          </div>
+          <div class="feature">
+            <div class="feature-ic">🌗</div>
+            <h4>Polished UI</h4>
+            <p>Modern, elegant design with theme toggle, micro‑interactions, and a smooth, responsive layout.</p>
+          </div>
+          <div class="feature">
+            <div class="feature-ic">📤</div>
+            <h4>Exportable</h4>
+            <p>Download a CSV of ranked results for sharing and offline analysis.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how" class="container">
+      <div class="card glass rise">
+        <h3 class="card-title">How It Works</h3>
+        <ol class="steps">
+          <li><strong>Paste JD:</strong> Include role, responsibilities, must‑have and nice‑to‑have skills.</li>
+          <li><strong>Set skills:</strong> Use commas for delimiters in both skill fields. Example: Python, Django, SQL.</li>
+          <li><strong>Upload resumes:</strong> PDF/DOCX/TXT. Use text‑based PDFs, not scanned images.</li>
+          <li><strong>Process:</strong> The system parses, scores, and flags potential issues and gaps.</li>
+          <li><strong>Decide:</strong> Filter for full hard‑coverage candidates, expand details, and export CSV.</li>
+        </ol>
+      </div>
+    </section>
+
+    
+
+    <section id="pricing" class="container">
+      <div class="card glass rise">
+        <h3 class="card-title">Pricing</h3>
+        <div class="pricing-grid">
+          <div class="price-card">
+            <h4>Starter</h4>
+            <p class="price">Free</p>
+            <ul>
+              <li>Local usage</li>
+              <li>Upload multiple resumes</li>
+              <li>Ranking + CSV export</li>
+              <li>JD tips & skill suggestions</li>
+            </ul>
+            <button class="ghost">Use now</button>
+          </div>
+          <div class="price-card pro">
+            <h4>Pro</h4>
+            <p class="price">Contact</p>
+            <ul>
+              <li>Advanced semantic models</li>
+              <li>Fairness analytics & dashboards</li>
+              <li>ATS integrations</li>
+              <li>Team collaboration</li>
+            </ul>
+            <button class="primary">Request demo</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="container">
+      <div class="card glass rise">
+        <h3 class="card-title">FAQ</h3>
+        <details class="faq"><summary>What delimiter should I use for skills?</summary><div>Use commas only. Example: Python, Django, SQL</div></details>
+        <details class="faq"><summary>Why is a PDF not parsed?</summary><div>Scanned PDFs (images) cannot be read. Use a text‑based PDF or DOCX.</div></details>
+        <details class="faq"><summary>How are candidates ranked?</summary><div>We combine keyword coverage (hard > nice) with semantic similarity between the JD and resume content.</div></details>
+        <details class="faq"><summary>What do the flags mean?</summary><div>Flags highlight missing must‑have skills, possible duplicate claims, and employment gaps > 3 months.</div></details>
+      </div>
+    </section>
+
+    <section id="contact" class="container">
+      <div class="card glass rise">
+        <h3 class="card-title">Contact</h3>
+        <p class="hint">Have feedback or feature ideas? Send a message.</p>
+        <form class="contact-grid" onsubmit="event.preventDefault(); alert('Thanks! This is a demo form.');">
+          <div>
+            <label for="cname">Name</label>
+            <input id="cname" type="text" placeholder="Your name" required>
+          </div>
+          <div>
+            <label for="cmail">Email</label>
+            <input id="cmail" type="text" placeholder="you@example.com" required>
+          </div>
+          <div class="full">
+            <label for="cmsg">Message</label>
+            <textarea id="cmsg" rows="5" placeholder="Write your message"></textarea>
+          </div>
+          <div class="full">
+            <button class="primary">Send</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div class="foot-brand">
+        <div class="logo small" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="g2" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#22d3ee"/>
+                <stop offset="1" stop-color="#34d399"/>
+              </linearGradient>
+            </defs>
+            <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#g2)"/>
+            <path d="M22 30c6-5 14-5 20 0v10c-6 5-14 5-20 0V30z" fill="rgba(255,255,255,.9)"/>
+            <circle cx="32" cy="28" r="6" fill="rgba(255,255,255,.92)"/>
+          </svg>
+        </div>
+        <span>Automated Resume Screener</span>
+      </div>
+      <small id="copyYear">© 2025 Automated Resume Screener. All rights reserved.</small>
+    </div>
+  </footer>
+
+  <script>
+    // Theme toggle
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon();
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.addEventListener('click', () => {
+      const curr = document.documentElement.getAttribute('data-theme');
+      const next = curr === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeIcon();
+    });
+    function updateThemeIcon(){
+      const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+      document.querySelector('#themeToggle .icon').textContent = isDark ? '☾' : '☀';
+    }
+
+    // Smooth scroll for nav links
+    document.querySelectorAll('.main-nav a, .cta').forEach(a => {
+      a.addEventListener('click', (e) => {
+        const href = a.getAttribute('href') || '';
+        if (href.startsWith('#')){
+          e.preventDefault();
+          const el = document.querySelector(href);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+
+    // Dynamic copyright year
+    const cy = document.getElementById('copyYear');
+    const y = new Date().getFullYear();
+    if (cy) cy.textContent = `© ${y} Automated Resume Screener. All rights reserved.`;
+
+    // Toast helper
+    function showToast(msg, timeout=2500){
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.hidden = false;
+      t.classList.add('show');
+      setTimeout(()=>{ t.classList.remove('show'); t.hidden = true; }, timeout);
+    }
+
+    // Simple reveal on load
+    window.addEventListener('load', ()=>{
+      document.querySelectorAll('.reveal, .reveal-delay, .reveal-delay2').forEach(el=>{
+        el.classList.add('in');
+      });
+    });
+  </script>
+</body>
+</html>
