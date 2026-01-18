@@ -35,67 +35,6 @@ A comprehensive, AI-powered resume screening system that helps HR professionals 
 - **Interactive Visualizations**: Canvas-based charts and filtering
 - **Real-time Updates**: Live filtering and sorting capabilities
 
-## 🚀 Quick Deployment
-
-### Free Deployment Options
-
-Deploy your resume screener for **FREE** using these platforms:
-
-| Platform | Free Tier | Deployment Time | Difficulty |
-|----------|-----------|----------------|------------|
-| **Railway** ⭐ | $5/month credit | 5 minutes | Easy |
-| **Render** | 750 hours/month | 10 minutes | Easy |
-| **Fly.io** | Free allowances | 15 minutes | Medium |
-
-### One-Click Deploy
-
-1. **Push to GitHub**:
-   ```bash
-   git init
-   git add .
-   git commit -m "Deploy resume screener"
-   git remote add origin https://github.com/yourusername/resume-screener.git
-   git push -u origin main
-   ```
-
-2. **Choose Platform & Deploy**:
-   - **Railway**: Connect GitHub repo → Auto-deploy ✨
-   - **Render**: Connect GitHub repo → Auto-deploy ✨
-   - **Fly.io**: Run `./deploy.sh` (Linux/Mac) or `deploy.bat` (Windows)
-
-3. **Set Environment Variables**:
-   ```
-   FLASK_CONFIG=production
-   SECRET_KEY=your-super-secret-key
-   ```
-
-4. **Done!** Your app will be live at `https://your-app.platform.com`
-
-📖 **Detailed Guide**: See [FREE_DEPLOYMENT_GUIDE.md](FREE_DEPLOYMENT_GUIDE.md) for step-by-step instructions.
-
-### 🛠️ Deployment Tools
-
-We've included helpful scripts to make deployment easier:
-
-```bash
-# Generate secure environment variables
-python setup_env.py
-
-# Test deployment readiness
-python test_deployment.py
-
-# Interactive deployment helper
-./deploy.sh        # Linux/Mac
-deploy.bat         # Windows
-```
-
-**Files Created for Easy Deployment**:
-- `railway.json` - Railway platform configuration
-- `render.yaml` - Render platform configuration  
-- `fly.toml` - Fly.io platform configuration
-- `.env` - Local environment variables (auto-generated)
-
----
 
 ### Prerequisites
 - Python 3.8+ 
@@ -174,61 +113,6 @@ services/
 4. **Analytics Layer**: Clustering, fairness analysis, success prediction
 5. **Visualization**: Interactive charts and detailed explanations
 
-## 🔧 Configuration
-
-### Environment Variables
-```bash
-FLASK_CONFIG=production     # development|production|testing
-HOST=0.0.0.0               # Server host
-PORT=5000                  # Server port
-SECRET_KEY=your-secret-key # Flask secret key
-```
-
-### Customization
-- **Skills Taxonomy**: Edit `data/skills_master.json`
-- **Trending Skills**: Modify `data/skill_trends.json` 
-- **Scoring Weights**: Adjust in `config.py` or via What-If interface
-- **Fairness Thresholds**: Configure disparate impact rules
-
-## 🐳 Docker Deployment
-
-```bash
-# Build and run with Docker Compose
-docker-compose up -d
-
-# Or build manually
-docker build -t resume-screener .
-docker run -p 5000:5000 resume-screener
-```
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-python scripts/run_tests.py
-
-# Run specific tests
-python -m pytest tests/test_basic.py -v
-
-# With coverage
-python -m pytest --cov=services --cov=app
-```
-
-## 📈 Performance & Scalability
-
-### Current Limits
-- **Batch Size**: 50 resumes per upload
-- **File Size**: 16MB per resume
-- **Text Length**: 50,000 characters per resume
-- **Session Storage**: In-memory (suitable for demo/small teams)
-
-### Production Recommendations
-- **Database**: Replace in-memory sessions with Redis/PostgreSQL
-- **File Storage**: Use cloud storage (AWS S3, Azure Blob)
-- **Caching**: Implement vectorizer and model caching
-- **Load Balancing**: Deploy behind nginx/Apache for multiple workers
-- **Monitoring**: Add logging, metrics, and health checks
-
 ## 🛡️ Security & Privacy
 
 ### Data Protection
@@ -243,24 +127,6 @@ python -m pytest --cov=services --cov=app
 - **Transparent AI**: Explainable scoring algorithms
 - **Data Retention**: Configurable session timeouts
 
-## 🤝 Contributing
-
-### Development Setup
-```bash
-# Install development dependencies
-pip install -r requirements.txt
-pip install pytest pytest-cov black flake8
-
-# Run code formatting
-black .
-
-# Run linting
-flake8 services/ app.py
-
-# Run tests
-pytest tests/ -v
-```
-
 ### Code Structure
 - **Services**: Modular backend components
 - **Templates**: Jinja2 HTML templates
@@ -268,25 +134,6 @@ pytest tests/ -v
 - **Tests**: Unit and integration tests
 - **Scripts**: Setup and utility scripts
 
-## 📋 Roadmap
-
-### Planned Features
-- [ ] **Advanced ML Models**: BERT/transformer-based semantic matching
-- [ ] **ATS Integration**: Connect with popular applicant tracking systems
-- [ ] **Multi-language Support**: Resume parsing in multiple languages
-- [ ] **Video Analysis**: CV video screening capabilities
-- [ ] **Team Collaboration**: Multi-user workspaces and sharing
-- [ ] **Advanced Fairness**: Integration with AIF360/Fairlearn libraries
-
-### Performance Improvements
-- [ ] **Async Processing**: Background job processing with Celery
-- [ ] **Caching Layer**: Redis for vectorizer and model caching
-- [ ] **Database Migration**: PostgreSQL for persistent storage
-- [ ] **API Rate Limiting**: Request throttling and quotas
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🆘 Support
 
@@ -303,4 +150,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Built with ❤️ for fair and efficient hiring**
