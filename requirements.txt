@@ -18,3 +18,7 @@ python-dateutil==2.9.0.post0
 
 # optional, helpful
 joblib==1.4.2
+
+# Testing
+pytest==8.0.0
+pytest-cov==4.0.0

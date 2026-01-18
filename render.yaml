@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: resume-screener
+    env: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: FLASK_CONFIG
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PORT
+        value: 5000
+      - key: HOST
+        value: 0.0.0.0
+      - key: MAX_CONTENT_LENGTH
+        value: 16777216
+      - key: MAX_RESUMES_PER_BATCH
+        value: 25
+    healthCheckPath: /health
+    plan: free

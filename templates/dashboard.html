@@ -55,6 +55,19 @@
     .bar-fill { position:absolute; left:0; top:0; bottom:0; width:0; background: linear-gradient(90deg, #22d3ee, #34d399); border-radius: 999px }
     .bar-fill.neg { background: #ef4444 }
     .badge { border:1px solid var(--surface-3); padding:2px 8px; border-radius:999px; margin-right:6px; display:inline-block }
+    
+    /* Enhanced histogram styles */
+    .hist-container { position: relative; }
+    .hist-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .hist-stats { font-size: 0.85rem; color: var(--muted); line-height: 1.3; }
+    .hist-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--surface-3); }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; }
+    .legend-color { width: 16px; height: 16px; border-radius: 3px; display: inline-block; }
+    
+    /* Enhanced scatter plot styles */
+    .viz-card canvas { border-radius: 12px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
+    .viz-card canvas:hover { box-shadow: inset 0 1px 3px rgba(0,0,0,0.15), 0 0 0 1px rgba(34,211,238,0.2); }
+    
     @media print {
       header.site-header, #themeToggle, #analyticsForm, .row-actions button, .chipbar, .switch, #clearBrush,
       #fairnessThresh, #exportFairness, #exportTopN, #topMetric, #topN, #whatIfCard .controls, .modal-overlay { display: none !important; }
@@ -157,14 +170,30 @@
 
       <div class="card glass rise viz-card">
         <div class="header-row">
-          <h3 class="card-title">PCA Scatter by Cluster</h3>
+          <h3 class="card-title">Enhanced PCA Scatter by Cluster</h3>
           <div class="row-actions">
-            <label class="switch" title="Label points">
+            <label for="scatterMode" style="margin-right:8px">Mode</label>
+            <select id="scatterMode" style="margin-right:12px;border-radius:10px;padding:6px;background:var(--surface-2);border:1px solid var(--surface-3);color:var(--text)">
+              <option value="cluster">By Cluster</option>
+              <option value="success">By Success Score</option>
+              <option value="risk">By Risk Level</option>
+              <option value="hard_skills">By Hard Skills</option>
+            </select>
+            <label class="switch" title="Show labels">
               <input type="checkbox" id="toggleLabels" />
               <span class="slider"></span>
             </label>
+            <label class="switch" title="Show connections" style="margin-left:8px">
+              <input type="checkbox" id="showConnections" />
+              <span class="slider"></span>
+            </label>
+            <label class="switch" title="Show density" style="margin-left:8px">
+              <input type="checkbox" id="showDensity" />
+              <span class="slider"></span>
+            </label>
             <button id="clearBrush" class="ghost" style="margin-left:8px">Clear Brush</button>
-            <button id="exportPdf" class="ghost" style="margin-left:8px">Export PDF</button>
+            <button id="resetZoom" class="ghost" style="margin-left:4px">Reset Zoom</button>
+            <button id="exportPdf" class="ghost" style="margin-left:4px">Export PDF</button>
           </div>
         </div>
         <canvas id="scatter" width="1000" height="460" aria-label="Candidate clusters"></canvas>
@@ -278,23 +307,72 @@
     </div>
 
     <div class="card glass rise">
-      <h3 class="card-title">Score Distributions</h3>
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
-        <div>
-          <h4 style="margin:0 0 6px">Overall</h4>
-          <canvas id="histOverall" width="480" height="160"></canvas>
+      <div class="header-row">
+        <h3 class="card-title">Score Distributions</h3>
+        <div class="row-actions">
+          <label for="histBins" style="margin-right:8px">Bins</label>
+          <select id="histBins" style="margin-right:12px;border-radius:10px;padding:6px;background:var(--surface-2);border:1px solid var(--surface-3);color:var(--text)">
+            <option value="10">10 bins</option>
+            <option value="20">20 bins</option>
+            <option value="5">5 bins</option>
+          </select>
+          <label class="switch" title="Show statistics">
+            <input type="checkbox" id="showStats" checked />
+            <span class="slider"></span>
+          </label>
+          <label class="switch" title="Show density curve" style="margin-left:8px">
+            <input type="checkbox" id="showDensity" />
+            <span class="slider"></span>
+          </label>
+          <button id="exportHist" class="ghost" style="margin-left:8px">Export Charts</button>
         </div>
-        <div>
-          <h4 style="margin:0 0 6px">Semantic</h4>
-          <canvas id="histSemantic" width="480" height="160"></canvas>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px">
+        <div class="hist-container">
+          <div class="hist-header">
+            <h4 style="margin:0 0 6px">Overall Score</h4>
+            <div class="hist-stats" id="statsOverall"></div>
+          </div>
+          <canvas id="histOverall" width="480" height="180"></canvas>
         </div>
-        <div>
-          <h4 style="margin:0 0 6px">Keyword</h4>
-          <canvas id="histKeyword" width="480" height="160"></canvas>
+        <div class="hist-container">
+          <div class="hist-header">
+            <h4 style="margin:0 0 6px">Semantic Score</h4>
+            <div class="hist-stats" id="statsSemantic"></div>
+          </div>
+          <canvas id="histSemantic" width="480" height="180"></canvas>
         </div>
-        <div>
-          <h4 style="margin:0 0 6px">Success</h4>
-          <canvas id="histSuccess" width="480" height="160"></canvas>
+        <div class="hist-container">
+          <div class="hist-header">
+            <h4 style="margin:0 0 6px">Keyword Score</h4>
+            <div class="hist-stats" id="statsKeyword"></div>
+          </div>
+          <canvas id="histKeyword" width="480" height="180"></canvas>
+        </div>
+        <div class="hist-container">
+          <div class="hist-header">
+            <h4 style="margin:0 0 6px">Success Score</h4>
+            <div class="hist-stats" id="statsSuccess"></div>
+          </div>
+          <canvas id="histSuccess" width="480" height="180"></canvas>
+        </div>
+      </div>
+      <div class="hist-legend">
+        <div class="legend-item">
+          <span class="legend-color" style="background: linear-gradient(135deg, #22d3ee, #34d399)"></span>
+          <span>Above threshold</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-color" style="background: linear-gradient(135deg, #64748b, #94a3b8)"></span>
+          <span>Below threshold</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-color" style="background: #f59e0b"></span>
+          <span>Mean</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-color" style="background: #ef4444"></span>
+          <span>Median</span>
         </div>
       </div>
     </div>
@@ -390,6 +468,69 @@
     const clusterSummaryEl = document.getElementById('clusterSummary');
     const flagCountsEl = document.getElementById('flagCounts');
     const gapSummaryEl = document.getElementById('gapSummary');
+    
+    // Histogram controls
+    const histBins = document.getElementById('histBins');
+    const showStats = document.getElementById('showStats');
+    const exportHistBtn = document.getElementById('exportHist');
+    
+    // Enhanced scatter controls
+    const scatterMode = document.getElementById('scatterMode');
+    const showConnections = document.getElementById('showConnections');
+    const showDensity = document.getElementById('showDensity');
+    const resetZoomBtn = document.getElementById('resetZoom');
+    
+    // Zoom and pan state
+    let zoomLevel = 1;
+    let panX = 0;
+    let panY = 0;
+    let isPanning = false;
+    let lastPanX = 0;
+    let lastPanY = 0;
+    
+    // Add clear all data function
+    function clearAllData() {
+      results = [];
+      view.hiddenClusters.clear();
+      selectedIdx = -1;
+      brushRect = null;
+      colors = {};
+      lastPositions = [];
+      localStorage.removeItem('last_job_text');
+      localStorage.removeItem('dash_filters');
+      
+      // Reset form
+      document.getElementById('job_description').value = '';
+      document.getElementById('hard_skills').value = '';
+      document.getElementById('nice_skills').value = '';
+      document.getElementById('resumes').value = '';
+      
+      // Reset UI
+      tbody.innerHTML = '';
+      if (topNTbody) topNTbody.innerHTML = '';
+      legend.innerHTML = '';
+      if (clusterFilter) clusterFilter.innerHTML = '';
+      
+      drawScatter();
+      showToast('All data cleared');
+    }
+    
+    // Add clear button to the interface
+    document.addEventListener('DOMContentLoaded', () => {
+      const headerActions = document.querySelector('.site-header .row-actions');
+      if (headerActions) {
+        const clearBtn = document.createElement('button');
+        clearBtn.className = 'ghost';
+        clearBtn.textContent = 'Clear All';
+        clearBtn.title = 'Clear all data and start fresh';
+        clearBtn.addEventListener('click', () => {
+          if (confirm('Clear all data and start fresh? This cannot be undone.')) {
+            clearAllData();
+          }
+        });
+        headerActions.appendChild(clearBtn);
+      }
+    });
 
     let view = { clusters: new Set(), minSuccess: 0, hiddenClusters: new Set(), hardFull: false };
     let sortState = { key: 'overall_score', dir: 'desc' };
@@ -405,6 +546,28 @@
     let lastPositions = [];
     let groupMap = loadGroupMap();
     const HIST_STATE = new Map();
+    let animationId = null;
+
+    // Animation loop for scatter plot effects
+    function startAnimation() {
+      if (animationId) return; // Already running
+      
+      function animate() {
+        if (selectedIdx >= 0 || (showDensity?.checked && lastPositions.length > 0)) {
+          drawScatter(); // Redraw for pulse effect
+        }
+        animationId = requestAnimationFrame(animate);
+      }
+      
+      animationId = requestAnimationFrame(animate);
+    }
+    
+    function stopAnimation() {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+    }
 
     // Lightweight client session id for accumulating uploads
     function getSessionId(){
@@ -417,10 +580,10 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       showToast('Running analytics…');
-      tbody.innerHTML = '';
-      results = [];
-      drawScatter();
-
+      
+      // Don't clear results immediately - let the server handle accumulation
+      // results = []; // REMOVED: This was causing data loss
+      
       const fd = new FormData(form);
       if (!fd.get('session_id')) fd.append('session_id', sessionInput.value || getSessionId());
       setLoading(true);
@@ -441,10 +604,33 @@
           alert(`Failed to run analytics: ${msg}`);
           return;
         }
-        results = Array.isArray(data.results) ? data.results : [];
+        
+        // Update results with new data from server
+        const newResults = Array.isArray(data.results) ? data.results : [];
+        
+        // If this is the first upload or job description changed, replace all results
+        const currentJobText = document.getElementById('job_description').value.trim();
+        const lastJobText = localStorage.getItem('last_job_text') || '';
+        
+        if (results.length === 0 || currentJobText !== lastJobText) {
+          results = newResults;
+          localStorage.setItem('last_job_text', currentJobText);
+          showToast(`Analysis complete. ${newResults.length} candidates processed.`);
+        } else {
+          // Merge new results with existing ones, avoiding duplicates
+          const existingFilenames = new Set(results.map(r => r.filename || ''));
+          const uniqueNewResults = newResults.filter(r => !existingFilenames.has(r.filename || ''));
+          
+          if (uniqueNewResults.length > 0) {
+            results = [...results, ...uniqueNewResults];
+            showToast(`${uniqueNewResults.length} new candidates added. Total: ${results.length}`);
+          } else {
+            showToast(`No new candidates found. ${newResults.length} candidates reprocessed.`);
+          }
+        }
+        
         buildClusterFilter(results);
         updateAll();
-        showToast('Done');
       } catch (err) {
         console.error('Analytics error:', err);
         alert(`Unexpected error while running analytics: ${err && err.message ? err.message : err}`);
@@ -477,6 +663,21 @@
     // (debounce defined earlier)
     if (clusterFilter) clusterFilter.addEventListener('change', () => { captureFilters(); updateAll(); });
     if (minSuccess) minSuccess.addEventListener('input', debounce(() => { captureFilters(); updateAll(); }, 120));
+    
+    // Histogram controls
+    if (histBins) histBins.addEventListener('change', () => { updateAll(); });
+    if (showStats) showStats.addEventListener('change', () => { updateAll(); });
+    if (exportHistBtn) exportHistBtn.addEventListener('click', exportHistograms);
+    
+    // Enhanced scatter controls
+    if (scatterMode) scatterMode.addEventListener('change', () => { updateAll(); });
+    if (showConnections) showConnections.addEventListener('change', () => { drawScatter(); });
+    if (showDensity) showDensity.addEventListener('change', () => { drawScatter(); });
+    if (resetZoomBtn) resetZoomBtn.addEventListener('click', () => { 
+      zoomLevel = 1; panX = 0; panY = 0; 
+      drawScatter(); 
+      showToast('Zoom reset');
+    });
 
     // sortable headers
     document.querySelectorAll('#candTable thead [data-sort]')
@@ -500,27 +701,47 @@
 
     function buildClusterFilter(items){
       if (!clusterFilter) return;
+      
+      // Save current selections
+      const currentSelections = Array.from(clusterFilter.selectedOptions).map(o => parseInt(o.value));
+      
       const cls = Array.from(new Set(items.map(r => r.cluster_id))).sort((a,b)=>a-b);
       clusterFilter.innerHTML = '';
       cls.forEach(c => {
         const opt = document.createElement('option');
         opt.value = String(c);
         opt.textContent = 'Cluster ' + c;
+        // Restore previous selection if it still exists
+        opt.selected = currentSelections.includes(c);
         clusterFilter.appendChild(opt);
       });
-      // restore persisted
-      try {
-        const saved = JSON.parse(localStorage.getItem('dash_filters')||'null');
-        if (saved && Array.isArray(saved.clusters)){
-          Array.from(clusterFilter.options).forEach(o => { o.selected = saved.clusters.includes(parseInt(o.value)); });
-          if (typeof saved.minSuccess === 'number' && minSuccess){ minSuccess.value = String(saved.minSuccess); }
-        }
-      } catch(e){}
+      
+      // If no previous selections, try to restore from localStorage
+      if (currentSelections.length === 0) {
+        try {
+          const saved = JSON.parse(localStorage.getItem('dash_filters')||'null');
+          if (saved && Array.isArray(saved.clusters)){
+            Array.from(clusterFilter.options).forEach(o => { 
+              o.selected = saved.clusters.includes(parseInt(o.value)); 
+            });
+            if (typeof saved.minSuccess === 'number' && minSuccess){ 
+              minSuccess.value = String(saved.minSuccess); 
+            }
+          }
+        } catch(e){}
+      }
+      
       captureFilters();
     }
 
     function filtered(){
-      return (results||[]).filter(r => {
+      if (!Array.isArray(results) || results.length === 0) {
+        return [];
+      }
+      
+      return results.filter(r => {
+        if (!r || typeof r !== 'object') return false;
+        
         const sc = Math.round((r.success_score||0)*100);
         const cid = parseInt(r.cluster_id);
         const clusterOk = (view.clusters.size===0) || view.clusters.has(cid);
@@ -540,17 +761,22 @@
     }
 
     function updateAll(){
-      const items = filtered();
-      const sorted = sortItems(items, sortState.key, sortState.dir);
-      renderTable(sorted);
-      buildLegend(items);
-      updateKpis(items);
-      drawScatterWith(sorted);
-      renderClusterSummary(items);
-      renderHistograms(items);
-      renderFlagsGaps(items);
-      updateTopN();
-      updateFairness();
+      try {
+        const items = filtered();
+        const sorted = sortItems(items, sortState.key, sortState.dir);
+        renderTable(sorted);
+        buildLegend(items);
+        updateKpis(items);
+        drawScatterWith(sorted);
+        renderClusterSummary(items);
+        renderHistograms(items);
+        renderFlagsGaps(items);
+        updateTopN();
+        updateFairness();
+      } catch (error) {
+        console.error('Error in updateAll:', error);
+        showToast('Error updating display. Please try refreshing.');
+      }
     }
 
     function setLoading(on){
@@ -717,27 +943,64 @@
 
     function buildLegend(items){
       legend.innerHTML = '';
-      const clset = Array.from(new Set(items.map(r => r.cluster_id))).sort((a,b)=>a-b);
-      colors = {};
-      const pal = ['#22d3ee','#34d399','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
-      clset.forEach((c,i)=>{ colors[c] = pal[i % pal.length]; });
-      clset.forEach(c => {
-        const div = document.createElement('div');
-        const hidden = view.hiddenClusters.has(parseInt(c));
-        div.className = 'item';
-        div.style.opacity = hidden ? '0.45' : '1';
-        div.style.cursor = 'pointer';
-        div.title = hidden ? 'Show cluster' : 'Hide cluster';
-        div.innerHTML = `<span class="swatch" style="background:${colors[c]}"></span> Cluster ${c}`;
-        div.addEventListener('click', ()=>{
-          const cid = parseInt(c);
-          if (view.hiddenClusters.has(cid)) view.hiddenClusters.delete(cid);
-          else view.hiddenClusters.add(cid);
-          updateAll();
+      const mode = scatterMode?.value || 'cluster';
+      
+      if (mode === 'cluster') {
+        // Original cluster legend with improved state management
+        const clset = Array.from(new Set(items.map(r => r.cluster_id))).sort((a,b)=>a-b);
+        
+        // Preserve existing color assignments for consistency
+        if (Object.keys(colors).length === 0) {
+          colors = {};
+          const pal = ['#22d3ee','#34d399','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+          clset.forEach((c,i)=>{ colors[c] = pal[i % pal.length]; });
+        } else {
+          // Add colors for new clusters only
+          const pal = ['#22d3ee','#34d399','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+          clset.forEach((c,i)=>{
+            if (!colors[c]) {
+              colors[c] = pal[i % pal.length];
+            }
+          });
+        }
+        
+        clset.forEach(c => {
+          const div = document.createElement('div');
+          const hidden = view.hiddenClusters.has(parseInt(c));
+          div.className = 'item';
+          div.style.opacity = hidden ? '0.45' : '1';
+          div.style.cursor = 'pointer';
+          div.title = hidden ? 'Show cluster' : 'Hide cluster';
+          div.innerHTML = `<span class="swatch" style="background:${colors[c]}"></span> Cluster ${c}`;
+          
+          div.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const cid = parseInt(c);
+            if (view.hiddenClusters.has(cid)) {
+              view.hiddenClusters.delete(cid);
+              showToast(`Showing Cluster ${cid}`);
+            } else {
+              view.hiddenClusters.add(cid);
+              showToast(`Hiding Cluster ${cid}`);
+            }
+            updateAll();
+          });
+          
+          legend.appendChild(div);
         });
-        legend.appendChild(div);
-      });
-      // add sort indicator on headers
+      } else {
+        // Mode-specific legends
+        const legendItems = getLegendForMode(mode);
+        legendItems.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'item';
+          div.innerHTML = `<span class="swatch" style="background:${item.color}"></span> ${item.label}`;
+          legend.appendChild(div);
+        });
+      }
+      
+      // Add sort indicator on headers
       document.querySelectorAll('#candTable thead [data-sort]').forEach(th => {
         const key = th.getAttribute('data-sort');
         const base = th.textContent.split(' ')[0];
@@ -745,20 +1008,48 @@
         else { th.innerHTML = base; th.classList.remove('th-sort'); }
       });
     }
+    
+    function getLegendForMode(mode) {
+      switch (mode) {
+        case 'success':
+          return [
+            { color: '#10b981', label: 'High Success (≥80%)' },
+            { color: '#f59e0b', label: 'Medium Success (60-80%)' },
+            { color: '#ef4444', label: 'Low Success (40-60%)' },
+            { color: '#6b7280', label: 'Very Low Success (<40%)' }
+          ];
+        case 'risk':
+          return [
+            { color: '#ef4444', label: 'High Risk' },
+            { color: '#f59e0b', label: 'Medium Risk' },
+            { color: '#10b981', label: 'Low Risk' },
+            { color: '#6b7280', label: 'Unknown Risk' }
+          ];
+        case 'hard_skills':
+          return [
+            { color: '#10b981', label: 'Excellent Coverage (≥90%)' },
+            { color: '#22d3ee', label: 'Good Coverage (70-90%)' },
+            { color: '#f59e0b', label: 'Fair Coverage (50-70%)' },
+            { color: '#ef4444', label: 'Poor Coverage (<50%)' }
+          ];
+        default:
+          return [];
+      }
+    }
 
     function normalizeCoords(items){
       const xs = items.map(r => (r.pca && typeof r.pca.x==='number') ? r.pca.x : 0);
       const ys = items.map(r => (r.pca && typeof r.pca.y==='number') ? r.pca.y : 0);
       const minX = Math.min(...xs, -1), maxX = Math.max(...xs, 1);
       const minY = Math.min(...ys, -1), maxY = Math.max(...ys, 1);
-      const pad = 30; // px
+      const pad = 40; // Increased padding for better axis labels
       const W = canvas.width, H = canvas.height;
       return items.map(r => {
         const x = (r.pca && typeof r.pca.x==='number') ? r.pca.x : 0;
         const y = (r.pca && typeof r.pca.y==='number') ? r.pca.y : 0;
         const nx = pad + (x - minX) / (maxX - minX || 1) * (W - 2*pad);
         const ny = pad + (maxY - y) / (maxY - minY || 1) * (H - 2*pad);
-        return { ...r, _nx: nx, _ny: ny };
+        return { ...r, _nx: nx, _ny: ny, _rawX: x, _rawY: y };
       });
     }
 
@@ -768,62 +1059,333 @@
 
     function drawScatterWith(items){
       const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-      ctx.fillStyle = isDark ? '#0b1220' : '#ffffff';
-      ctx.fillRect(0,0,canvas.width,canvas.height);
+      const mode = scatterMode?.value || 'cluster';
+      
+      // Clear canvas with gradient background
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      if (isDark) {
+        gradient.addColorStop(0, '#0f1629');
+        gradient.addColorStop(1, '#1e293b');
+      } else {
+        gradient.addColorStop(0, '#f8fafc');
+        gradient.addColorStop(1, '#e2e8f0');
+      }
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       if (!items.length) {
         ctx.fillStyle = isDark ? '#8aa0b6' : '#4b5563';
-        ctx.font = '500 16px Outfit, system-ui, sans-serif';
-        ctx.fillText('Run analytics to visualize candidates', 20, 30);
+        ctx.font = '500 18px Outfit, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Run analytics to visualize candidates', canvas.width/2, canvas.height/2);
+        ctx.textAlign = 'left';
         return;
       }
 
       const itemsN = normalizeCoords(items);
       lastPositions = itemsN.map((r, i) => ({ i, x: r._nx, y: r._ny, key: (r.filename||'') }));
-      const showLabels = toggleLabels.checked;
+      const showLabels = toggleLabels?.checked || false;
+      const showConns = showConnections?.checked || false;
+      const showDens = showDensity?.checked || false;
 
-      // axes
-      ctx.strokeStyle = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)';
+      // Draw density heatmap if enabled
+      if (showDens && itemsN.length > 3) {
+        drawDensityMap(itemsN, isDark);
+      }
+
+      // Enhanced grid and axes
+      drawEnhancedGrid(isDark);
+      
+      // Draw connections between similar candidates
+      if (showConns) {
+        drawConnections(itemsN, isDark);
+      }
+
+      // Draw points with enhanced styling based on mode
+      drawEnhancedPoints(itemsN, mode, isDark, showLabels);
+
+      // Draw brush rectangle with enhanced styling
+      if (brushRect){
+        drawEnhancedBrush(isDark);
+      }
+      
+      // Draw axis labels
+      drawAxisLabels(isDark);
+    }
+    
+    function drawEnhancedGrid(isDark) {
+      const gridColor = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
+      const axisColor = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
+      
+      ctx.strokeStyle = gridColor;
       ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(30, canvas.height/2); ctx.lineTo(canvas.width-30, canvas.height/2);
-      ctx.moveTo(canvas.width/2, 20); ctx.lineTo(canvas.width/2, canvas.height-20);
-      ctx.stroke();
-
-      // points
-      itemsN.forEach(r => {
-        const c = colors[r.cluster_id] || '#22d3ee';
-        const size = 6 + Math.round(6*(r.success_score||0));
-        ctx.fillStyle = c;
+      ctx.setLineDash([2, 4]);
+      
+      // Vertical grid lines
+      for (let i = 1; i < 5; i++) {
+        const x = (canvas.width * i) / 5;
         ctx.beginPath();
-        ctx.arc(r._nx, r._ny, size, 0, Math.PI*2);
-        ctx.fill();
-        // selected ring
-        if (selectedIdx>=0){
-          const sel = lastPositions[selectedIdx];
-          if (sel && sel.key === (r.filename||'')){
-            ctx.strokeStyle = '#f59e0b'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(r._nx, r._ny, size+3, 0, Math.PI*2); ctx.stroke();
-          }
-        }
-        if (showLabels){
-          ctx.fillStyle = isDark ? '#d8e1eb' : '#111827';
-          ctx.font = '500 12px Outfit, system-ui, sans-serif';
-          const label = (r.filename||'').split(/[\\/]/).pop();
-          ctx.fillText(label, r._nx + 8, r._ny - 8);
+        ctx.moveTo(x, 40);
+        ctx.lineTo(x, canvas.height - 40);
+        ctx.stroke();
+      }
+      
+      // Horizontal grid lines
+      for (let i = 1; i < 4; i++) {
+        const y = 40 + ((canvas.height - 80) * i) / 4;
+        ctx.beginPath();
+        ctx.moveTo(40, y);
+        ctx.lineTo(canvas.width - 40, y);
+        ctx.stroke();
+      }
+      
+      ctx.setLineDash([]);
+      
+      // Main axes with enhanced styling
+      ctx.strokeStyle = axisColor;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(40, canvas.height/2);
+      ctx.lineTo(canvas.width-40, canvas.height/2);
+      ctx.moveTo(canvas.width/2, 40);
+      ctx.lineTo(canvas.width/2, canvas.height-40);
+      ctx.stroke();
+      
+      // Axis arrows
+      const arrowSize = 8;
+      ctx.fillStyle = axisColor;
+      // Right arrow
+      ctx.beginPath();
+      ctx.moveTo(canvas.width - 40, canvas.height/2);
+      ctx.lineTo(canvas.width - 40 - arrowSize, canvas.height/2 - arrowSize/2);
+      ctx.lineTo(canvas.width - 40 - arrowSize, canvas.height/2 + arrowSize/2);
+      ctx.closePath();
+      ctx.fill();
+      // Up arrow
+      ctx.beginPath();
+      ctx.moveTo(canvas.width/2, 40);
+      ctx.lineTo(canvas.width/2 - arrowSize/2, 40 + arrowSize);
+      ctx.lineTo(canvas.width/2 + arrowSize/2, 40 + arrowSize);
+      ctx.closePath();
+      ctx.fill();
+    }
+    
+    function drawDensityMap(items, isDark) {
+      const cellSize = 20;
+      const cols = Math.ceil(canvas.width / cellSize);
+      const rows = Math.ceil(canvas.height / cellSize);
+      const density = new Array(rows).fill(null).map(() => new Array(cols).fill(0));
+      
+      // Calculate density
+      items.forEach(item => {
+        const col = Math.floor(item._nx / cellSize);
+        const row = Math.floor(item._ny / cellSize);
+        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+          density[row][col]++;
         }
       });
-
-      // brush rectangle
-      if (brushRect){
-        const x0=Math.min(brushRect.x0,brushRect.x1), x1=Math.max(brushRect.x0,brushRect.x1);
-        const y0=Math.min(brushRect.y0,brushRect.y1), y1=Math.max(brushRect.y0,brushRect.y1);
-        ctx.strokeStyle = '#34d399'; ctx.setLineDash([6,4]); ctx.lineWidth=2;
-        ctx.strokeRect(x0,y0,x1-x0,y1-y0);
-        ctx.setLineDash([]);
+      
+      const maxDensity = Math.max(...density.flat());
+      if (maxDensity === 0) return;
+      
+      // Draw density cells
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const count = density[row][col];
+          if (count > 0) {
+            const alpha = (count / maxDensity) * 0.3;
+            ctx.fillStyle = isDark ? `rgba(34, 211, 238, ${alpha})` : `rgba(59, 130, 246, ${alpha})`;
+            ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+          }
+        }
       }
     }
+    
+    function drawConnections(items, isDark) {
+      ctx.strokeStyle = isDark ? 'rgba(34, 211, 238, 0.15)' : 'rgba(59, 130, 246, 0.15)';
+      ctx.lineWidth = 1;
+      
+      items.forEach(item => {
+        const neighbors = item.neighbors || [];
+        neighbors.slice(0, 2).forEach(neighbor => { // Only show top 2 connections
+          const neighborItem = items.find(i => (i.filename || '').includes(neighbor.filename || ''));
+          if (neighborItem && (neighbor.sim || 0) > 0.7) { // Only high similarity
+            ctx.beginPath();
+            ctx.moveTo(item._nx, item._ny);
+            ctx.lineTo(neighborItem._nx, neighborItem._ny);
+            ctx.stroke();
+          }
+        });
+      });
+    }
+    
+    function drawEnhancedPoints(items, mode, isDark, showLabels) {
+      items.forEach((r, index) => {
+        const baseSize = 4;
+        let size, color, strokeColor, strokeWidth;
+        
+        switch (mode) {
+          case 'success':
+            const successScore = r.success_score || 0;
+            size = baseSize + Math.round(8 * successScore);
+            color = getSuccessColor(successScore);
+            strokeColor = isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)';
+            strokeWidth = 1;
+            break;
+            
+          case 'risk':
+            const riskLevel = (r.risk_label || '').toLowerCase();
+            size = baseSize + 4;
+            color = getRiskColor(riskLevel);
+            strokeColor = color;
+            strokeWidth = 2;
+            break;
+            
+          case 'hard_skills':
+            const hardCoverage = r.hard_skill_coverage || 0;
+            size = baseSize + Math.round(6 * hardCoverage);
+            color = getHardSkillsColor(hardCoverage);
+            strokeColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
+            strokeWidth = 1;
+            break;
+            
+          default: // cluster mode
+            color = colors[r.cluster_id] || '#22d3ee';
+            size = baseSize + Math.round(6 * (r.success_score || 0));
+            strokeColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
+            strokeWidth = 1;
+        }
+        
+        // Draw point with glow effect
+        if (size > 8) {
+          // Glow for larger points
+          ctx.shadowColor = color;
+          ctx.shadowBlur = size / 2;
+        }
+        
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(r._nx, r._ny, size, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Reset shadow
+        ctx.shadowBlur = 0;
+        
+        // Stroke
+        if (strokeWidth > 0) {
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = strokeWidth;
+          ctx.stroke();
+        }
+        
+        // Selection ring with animation
+        if (selectedIdx >= 0) {
+          const sel = lastPositions[selectedIdx];
+          if (sel && sel.key === (r.filename || '')) {
+            const time = Date.now() / 1000;
+            const pulse = 1 + 0.3 * Math.sin(time * 4);
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.arc(r._nx, r._ny, (size + 4) * pulse, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+        }
+        
+        // Enhanced labels with background
+        if (showLabels) {
+          const label = (r.filename || '').split(/[\\/]/).pop();
+          const labelX = r._nx + size + 6;
+          const labelY = r._ny - 4;
+          
+          ctx.font = '500 11px Outfit, system-ui, sans-serif';
+          const metrics = ctx.measureText(label);
+          const labelWidth = metrics.width + 8;
+          const labelHeight = 16;
+          
+          // Label background
+          ctx.fillStyle = isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.9)';
+          ctx.fillRect(labelX - 4, labelY - 12, labelWidth, labelHeight);
+          
+          // Label border
+          ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(labelX - 4, labelY - 12, labelWidth, labelHeight);
+          
+          // Label text
+          ctx.fillStyle = isDark ? '#e2e8f0' : '#1e293b';
+          ctx.fillText(label, labelX, labelY);
+        }
+      });
+    }
+    
+    function drawEnhancedBrush(isDark) {
+      const x0 = Math.min(brushRect.x0, brushRect.x1);
+      const x1 = Math.max(brushRect.x0, brushRect.x1);
+      const y0 = Math.min(brushRect.y0, brushRect.y1);
+      const y1 = Math.max(brushRect.y0, brushRect.y1);
+      
+      // Brush fill
+      ctx.fillStyle = isDark ? 'rgba(34, 211, 238, 0.1)' : 'rgba(59, 130, 246, 0.1)';
+      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+      
+      // Brush border with animation
+      const time = Date.now() / 1000;
+      const dashOffset = (time * 20) % 20;
+      ctx.strokeStyle = '#34d399';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([10, 10]);
+      ctx.lineDashOffset = -dashOffset;
+      ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
+    }
+    
+    function drawAxisLabels(isDark) {
+      ctx.fillStyle = isDark ? '#94a3b8' : '#64748b';
+      ctx.font = '500 12px Outfit, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      
+      // X-axis label
+      ctx.fillText('PC1 (Principal Component 1)', canvas.width / 2, canvas.height - 10);
+      
+      // Y-axis label (rotated)
+      ctx.save();
+      ctx.translate(15, canvas.height / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('PC2 (Principal Component 2)', 0, 0);
+      ctx.restore();
+      
+      ctx.textAlign = 'left';
+    }
+    
+    // Color helper functions
+    function getSuccessColor(score) {
+      if (score >= 0.8) return '#10b981'; // High success - green
+      if (score >= 0.6) return '#f59e0b'; // Medium success - amber
+      if (score >= 0.4) return '#ef4444'; // Low success - red
+      return '#6b7280'; // Very low - gray
+    }
+    
+    function getRiskColor(riskLevel) {
+      switch (riskLevel) {
+        case 'high': return '#ef4444';
+        case 'medium': return '#f59e0b';
+        case 'low': return '#10b981';
+        default: return '#6b7280';
+      }
+    }
+    
+    function getHardSkillsColor(coverage) {
+      if (coverage >= 0.9) return '#10b981'; // Excellent coverage
+      if (coverage >= 0.7) return '#22d3ee'; // Good coverage
+      if (coverage >= 0.5) return '#f59e0b'; // Fair coverage
+      return '#ef4444'; // Poor coverage
+    }
 
-    // Hover tooltip and click-to-focus on scatter
+    // Enhanced hover tooltip and click-to-focus on scatter
     const tip = document.getElementById('scatterTip');
     canvas.addEventListener('mousemove', (e) => {
       if (isBrushing){
@@ -836,49 +1398,116 @@
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
       const nearest = findNearest(mx, my);
-      if (!nearest) { tip.style.display = 'none'; return; }
+      if (!nearest) { 
+        tip.style.display = 'none'; 
+        canvas.style.cursor = 'default';
+        return; 
+      }
+      
+      canvas.style.cursor = 'pointer';
       const r = (results||[]).find(x => (x.filename||'') === nearest.key) || results[nearest.i];
+      const mode = scatterMode?.value || 'cluster';
+      
       tip.style.display = 'block';
       tip.style.left = (e.pageX + 12) + 'px';
       tip.style.top = (e.pageY + 12) + 'px';
-      tip.innerHTML = `${escapeHtml((r.filename||'').split(/[\\/]/).pop())}<br/>Cluster ${r.cluster_id} • Success ${Math.round((r.success_score||0)*100)}%`;
+      
+      // Enhanced tooltip content based on mode
+      let tooltipContent = `<strong>${escapeHtml((r.filename||'').split(/[\\/]/).pop())}</strong><br/>`;
+      
+      switch (mode) {
+        case 'success':
+          tooltipContent += `Success: ${Math.round((r.success_score||0)*100)}%<br/>`;
+          tooltipContent += `Overall: ${Math.round((r.overall_score||0)*100)}%`;
+          break;
+        case 'risk':
+          tooltipContent += `Risk: ${r.risk_label || 'Unknown'}<br/>`;
+          tooltipContent += `Success: ${Math.round((r.success_score||0)*100)}%`;
+          break;
+        case 'hard_skills':
+          tooltipContent += `Hard Skills: ${Math.round((r.hard_skill_coverage||0)*100)}%<br/>`;
+          tooltipContent += `Missing: ${(r.missing_hard_skills||[]).length} skills`;
+          break;
+        default:
+          tooltipContent += `Cluster ${r.cluster_id} • Success ${Math.round((r.success_score||0)*100)}%`;
+      }
+      
+      tip.innerHTML = tooltipContent;
     });
-    canvas.addEventListener('mouseleave', ()=>{ tip.style.display='none'; });
+    
+    canvas.addEventListener('mouseleave', ()=>{ 
+      tip.style.display='none'; 
+      canvas.style.cursor = 'default';
+    });
+    
     canvas.addEventListener('click', (e) => {
       if (!lastPositions.length) return;
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
       const nearest = findNearest(mx, my);
       if (!nearest) return;
+      
       const r = (results||[]).find(x => (x.filename||'') === nearest.key) || results[nearest.i];
+      selectedIdx = nearest.i;
+      startAnimation(); // Start animation for selection pulse
       focusRowByFilename(r.filename||'');
       if (r) openExplain(r);
     });
 
     let isBrushing = false;
     canvas.addEventListener('mousedown', (e)=>{
+      if (e.shiftKey) return; // Allow shift+click for multi-select in future
       const rect = canvas.getBoundingClientRect();
-      isBrushing = true; brushRect = { x0: e.clientX-rect.left, y0: e.clientY-rect.top, x1: e.clientX-rect.left, y1: e.clientY-rect.top };
+      isBrushing = true; 
+      brushRect = { 
+        x0: e.clientX-rect.left, 
+        y0: e.clientY-rect.top, 
+        x1: e.clientX-rect.left, 
+        y1: e.clientY-rect.top 
+      };
     });
+    
     window.addEventListener('mouseup', ()=>{
-      if (isBrushing){ isBrushing=false; updateAll(); }
+      if (isBrushing){ 
+        isBrushing=false; 
+        updateAll(); 
+      }
     });
 
-    // Keyboard navigation: arrows to move selection, Enter to focus row
+    // Enhanced keyboard navigation with animation
     document.addEventListener('keydown', (e)=>{
       if (!lastPositions.length) return;
-      const keys = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter'];
+      const keys = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter','Escape'];
       if (!keys.includes(e.key)) return;
+      
       if (e.key==='Enter'){
-        const sel = lastPositions[Math.max(0,selectedIdx)]; if (sel){ const r = (results||[]).find(x => (x.filename||'')===sel.key); if (r) focusRowByFilename(r.filename||''); }
+        const sel = lastPositions[Math.max(0,selectedIdx)]; 
+        if (sel){ 
+          const r = (results||[]).find(x => (x.filename||'')===sel.key); 
+          if (r) {
+            focusRowByFilename(r.filename||'');
+            openExplain(r);
+          }
+        }
         return;
       }
+      
+      if (e.key==='Escape'){
+        selectedIdx = -1;
+        stopAnimation();
+        drawScatter();
+        return;
+      }
+      
       e.preventDefault();
-      if (selectedIdx<0) selectedIdx = 0; else {
+      if (selectedIdx<0) {
+        selectedIdx = 0;
+        startAnimation();
+      } else {
         if (e.key==='ArrowLeft' || e.key==='ArrowUp') selectedIdx = Math.max(0, selectedIdx-1);
         if (e.key==='ArrowRight' || e.key==='ArrowDown') selectedIdx = Math.min(lastPositions.length-1, selectedIdx+1);
       }
-      drawScatterWith(filtered());
+      drawScatter();
     });
 
     function findNearest(x, y){
@@ -887,7 +1516,7 @@
         const dx = p.x - x, dy = p.y - y; const d2 = dx*dx + dy*dy;
         if (d2 < bd) { bd = d2; best = p; }
       }
-      const rad2 = 14*14; // within 14px
+      const rad2 = 20*20; // Increased hit radius for better UX
       return (bd <= rad2) ? best : null;
     }
 
@@ -1270,48 +1899,262 @@
       });
     }
 
-    // Histograms
+    // Enhanced Histograms with statistics and better visuals
     function renderHistograms(items){
-      drawHist('histOverall', 'Overall', items.map(x=>+x.overall_score||0));
-      drawHist('histSemantic', 'Semantic', items.map(x=>+x.semantic_score||0));
-      drawHist('histKeyword', 'Keyword', items.map(x=>+x.keyword_score||0));
-      drawHist('histSuccess', 'Success', items.map(x=>+x.success_score||0));
+      const binCount = parseInt(histBins?.value || '10');
+      const statsVisible = showStats?.checked !== false;
+      
+      drawEnhancedHist('histOverall', 'Overall', items.map(x=>+x.overall_score||0), binCount, statsVisible, 'statsOverall');
+      drawEnhancedHist('histSemantic', 'Semantic', items.map(x=>+x.semantic_score||0), binCount, statsVisible, 'statsSemantic');
+      drawEnhancedHist('histKeyword', 'Keyword', items.map(x=>+x.keyword_score||0), binCount, statsVisible, 'statsKeyword');
+      drawEnhancedHist('histSuccess', 'Success', items.map(x=>+x.success_score||0), binCount, statsVisible, 'statsSuccess');
     }
-    function drawHist(id, label, vals){
-      const c = document.getElementById(id); if (!c) return; const c2 = c.getContext('2d');
-      const bins = new Array(10).fill(0);
-      vals.forEach(v => { const i = Math.max(0, Math.min(9, Math.floor((v||0)*10))); bins[i]++; });
-      const prev = HIST_STATE.get(id) || new Array(10).fill(0);
-      const max = Math.max(1, ...bins);
-      const W=c.width, H=c.height; const pad=20; const bw = (W-2*pad)/bins.length;
-      let t=0; const steps=8;
-      function frame(){
-        c2.clearRect(0,0,W,H);
-        c2.fillStyle = '#1f2937'; c2.fillRect(0,0,W,H);
-        for(let i=0;i<bins.length;i++){
-          const curr = prev[i] + (bins[i]-prev[i]) * (t/steps);
-          const h = (H-2*pad) * (curr/max);
-          const x = pad + i*bw; const y = H-pad-h;
-          c2.fillStyle = i>=view.minSuccess/10 ? '#34d399' : '#22d3ee';
-          c2.fillRect(x, y, bw-4, Math.max(0,h));
-        }
-        c2.fillStyle = '#9ca3af'; c2.font='12px Outfit, sans-serif';
-        c2.fillText('0%', pad, H-4); c2.fillText('100%', W-pad-28, H-4);
-        if (t++<steps) requestAnimationFrame(frame);
-        else HIST_STATE.set(id, bins);
+    
+    function drawEnhancedHist(canvasId, label, vals, binCount, showStats, statsId){
+      const canvas = document.getElementById(canvasId);
+      const statsEl = document.getElementById(statsId);
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+      
+      // Calculate statistics
+      const sortedVals = vals.slice().sort((a,b) => a-b);
+      const mean = vals.length ? vals.reduce((a,b) => a+b, 0) / vals.length : 0;
+      const median = sortedVals.length ? sortedVals[Math.floor(sortedVals.length/2)] : 0;
+      const std = vals.length > 1 ? Math.sqrt(vals.reduce((a,b) => a + Math.pow(b-mean, 2), 0) / (vals.length-1)) : 0;
+      const min = sortedVals[0] || 0;
+      const max = sortedVals[sortedVals.length-1] || 0;
+      
+      // Update statistics display
+      if (statsEl && showStats) {
+        statsEl.innerHTML = `
+          <div>Mean: <strong>${(mean*100).toFixed(1)}%</strong></div>
+          <div>Median: <strong>${(median*100).toFixed(1)}%</strong></div>
+          <div>Std: <strong>${(std*100).toFixed(1)}%</strong></div>
+          <div>Range: <strong>${(min*100).toFixed(0)}%-${(max*100).toFixed(0)}%</strong></div>
+        `;
+        statsEl.style.display = 'block';
+      } else if (statsEl) {
+        statsEl.style.display = 'none';
       }
-      frame();
-      // tooltip interaction
-      const tip = document.getElementById('scatterTip');
-      c.onmousemove = (e)=>{
-        const rect = c.getBoundingClientRect(); const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
-        const idx = Math.max(0, Math.min(9, Math.floor((mx - pad)/bw)));
-        if (mx<pad || mx>W-pad || my<pad || my>H-pad){ tip.style.display='none'; return; }
-        const start = idx*10, end = start+10;
-        tip.style.display='block'; tip.style.left=(e.pageX+12)+'px'; tip.style.top=(e.pageY+12)+'px';
-        tip.innerHTML = `${label}: ${bins[idx]} candidates in ${start}–${end}%`;
+      
+      // Create bins
+      const bins = new Array(binCount).fill(0);
+      vals.forEach(v => {
+        const i = Math.max(0, Math.min(binCount-1, Math.floor((v||0)*binCount)));
+        bins[i]++;
+      });
+      
+      // Animation state
+      const prev = HIST_STATE.get(canvasId) || new Array(binCount).fill(0);
+      const maxCount = Math.max(1, ...bins);
+      
+      const W = canvas.width;
+      const H = canvas.height;
+      const pad = 30;
+      const topPad = 20;
+      const binWidth = (W - 2*pad) / binCount;
+      const chartHeight = H - pad - topPad;
+      
+      let animFrame = 0;
+      const animSteps = 12;
+      
+      function animate() {
+        // Clear canvas with background
+        ctx.fillStyle = isDark ? '#0f1629' : '#f8fafc';
+        ctx.fillRect(0, 0, W, H);
+        
+        // Draw grid lines
+        ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 4]);
+        
+        // Horizontal grid lines
+        for (let i = 0; i <= 4; i++) {
+          const y = topPad + (chartHeight * i / 4);
+          ctx.beginPath();
+          ctx.moveTo(pad, y);
+          ctx.lineTo(W - pad, y);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        
+        // Draw bars with animation
+        for (let i = 0; i < binCount; i++) {
+          const targetHeight = (chartHeight * bins[i]) / maxCount;
+          const currentHeight = prev[i] + (bins[i] - prev[i]) * (animFrame / animSteps);
+          const barHeight = (chartHeight * currentHeight) / maxCount;
+          
+          const x = pad + i * binWidth;
+          const y = H - pad - barHeight;
+          const barWidth = binWidth - 2;
+          
+          // Determine bar color based on threshold
+          const binStart = i / binCount;
+          const binEnd = (i + 1) / binCount;
+          const thresholdPct = view.minSuccess / 100;
+          
+          let gradient;
+          if (binEnd <= thresholdPct) {
+            // Below threshold - gray
+            gradient = ctx.createLinearGradient(0, y, 0, y + barHeight);
+            gradient.addColorStop(0, isDark ? '#64748b' : '#94a3b8');
+            gradient.addColorStop(1, isDark ? '#475569' : '#64748b');
+          } else if (binStart >= thresholdPct) {
+            // Above threshold - cyan to emerald
+            gradient = ctx.createLinearGradient(0, y, 0, y + barHeight);
+            gradient.addColorStop(0, '#22d3ee');
+            gradient.addColorStop(1, '#34d399');
+          } else {
+            // Straddles threshold - mixed
+            gradient = ctx.createLinearGradient(0, y, 0, y + barHeight);
+            gradient.addColorStop(0, '#22d3ee');
+            gradient.addColorStop(0.5, '#34d399');
+            gradient.addColorStop(1, '#64748b');
+          }
+          
+          ctx.fillStyle = gradient;
+          ctx.fillRect(x, y, barWidth, Math.max(1, barHeight));
+          
+          // Add subtle border
+          ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, barWidth, Math.max(1, barHeight));
+        }
+        
+        // Draw statistical markers
+        if (showStats && vals.length > 0) {
+          const meanX = pad + (mean * (W - 2*pad));
+          const medianX = pad + (median * (W - 2*pad));
+          
+          // Mean line (orange)
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 2]);
+          ctx.beginPath();
+          ctx.moveTo(meanX, topPad);
+          ctx.lineTo(meanX, H - pad);
+          ctx.stroke();
+          
+          // Median line (red)
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([2, 2]);
+          ctx.beginPath();
+          ctx.moveTo(medianX, topPad);
+          ctx.lineTo(medianX, H - pad);
+          ctx.stroke();
+          
+          ctx.setLineDash([]);
+        }
+        
+        // Draw axis labels
+        ctx.fillStyle = isDark ? '#9ca3af' : '#6b7280';
+        ctx.font = '11px Outfit, system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('0%', pad - 5, H - 8);
+        ctx.textAlign = 'right';
+        ctx.fillText('100%', W - pad + 5, H - 8);
+        ctx.textAlign = 'center';
+        
+        // Y-axis labels (count)
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+          const count = Math.round((maxCount * i) / 4);
+          const y = H - pad - (chartHeight * i / 4);
+          ctx.fillText(count.toString(), pad - 8, y + 4);
+        }
+        
+        // Continue animation
+        if (animFrame < animSteps) {
+          animFrame++;
+          requestAnimationFrame(animate);
+        } else {
+          HIST_STATE.set(canvasId, bins.slice());
+        }
+      }
+      
+      animate();
+      
+      // Enhanced tooltip interaction
+      const tooltip = document.getElementById('scatterTip');
+      canvas.onmousemove = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        
+        if (mx < pad || mx > W - pad || my < topPad || my > H - pad) {
+          tooltip.style.display = 'none';
+          return;
+        }
+        
+        const binIndex = Math.floor((mx - pad) / binWidth);
+        if (binIndex >= 0 && binIndex < binCount) {
+          const binStart = Math.round((binIndex / binCount) * 100);
+          const binEnd = Math.round(((binIndex + 1) / binCount) * 100);
+          const count = bins[binIndex];
+          const percentage = vals.length ? ((count / vals.length) * 100).toFixed(1) : '0';
+          
+          tooltip.style.display = 'block';
+          tooltip.style.left = (e.pageX + 12) + 'px';
+          tooltip.style.top = (e.pageY + 12) + 'px';
+          tooltip.innerHTML = `
+            <strong>${label} ${binStart}%-${binEnd}%</strong><br/>
+            ${count} candidates (${percentage}%)
+          `;
+        }
       };
-      c.onmouseleave = ()=>{ const tip = document.getElementById('scatterTip'); tip.style.display='none'; };
+      
+      canvas.onmouseleave = () => {
+        tooltip.style.display = 'none';
+      };
+      
+      // Click to filter by range
+      canvas.onclick = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        
+        if (mx >= pad && mx <= W - pad) {
+          const binIndex = Math.floor((mx - pad) / binWidth);
+          const binStart = Math.round((binIndex / binCount) * 100);
+          
+          if (minSuccess) {
+            minSuccess.value = binStart.toString();
+            captureFilters();
+            updateAll();
+            showToast(`Filtered to ${label.toLowerCase()} ≥ ${binStart}%`);
+          }
+        }
+      };
+    }
+    
+    // Export histograms function
+    function exportHistograms() {
+      const canvases = [
+        {id: 'histOverall', name: 'overall_scores'},
+        {id: 'histSemantic', name: 'semantic_scores'},
+        {id: 'histKeyword', name: 'keyword_scores'},
+        {id: 'histSuccess', name: 'success_scores'}
+      ];
+      
+      canvases.forEach(({id, name}) => {
+        const canvas = document.getElementById(id);
+        if (canvas) {
+          canvas.toBlob(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${name}_distribution.png`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+          });
+        }
+      });
+      
+      showToast('Downloading histogram images...');
     }
 
     // Flags & gaps
