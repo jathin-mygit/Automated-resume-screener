@@ -68,43 +68,19 @@ def create_app(config_name=None):
 
     @app.route("/health")
     def health_check():
-        """Health check endpoint for monitoring."""
+        """Simple health check endpoint for monitoring."""
         try:
-            # Initialize services if not already done
-            _init_services()
-            
-            # Check if services are properly loaded
-            health_status = {
+            return jsonify({
                 "status": "healthy",
                 "timestamp": datetime.now().isoformat(),
-                "nlp_loaded": NLP is not None,
-                "vectorizer_loaded": VECT is not None,
-                "active_sessions": len(SESSIONS),
-                "config": app.config.get('FLASK_CONFIG', 'unknown'),
                 "version": "1.0.0"
-            }
-            
-            # Additional checks
-            if NLP is not None:
-                try:
-                    # Test NLP model with a simple sentence
-                    test_doc = NLP("test sentence")
-                    health_status["nlp_test"] = "passed"
-                except Exception as e:
-                    health_status["nlp_test"] = f"failed: {str(e)}"
-                    health_status["status"] = "degraded"
-            
-            return jsonify(health_status), 200
-            
+            }), 200
         except Exception as e:
-            error_status = {
-                "status": "unhealthy",
-                "timestamp": datetime.now().isoformat(),
+            return jsonify({
+                "status": "unhealthy", 
                 "error": str(e),
-                "nlp_loaded": NLP is not None,
-                "vectorizer_loaded": VECT is not None
-            }
-            return jsonify(error_status), 500
+                "timestamp": datetime.now().isoformat()
+            }), 500
 
 
 

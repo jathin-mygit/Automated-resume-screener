@@ -29,16 +29,8 @@ ENV HOST=0.0.0.0
 ENV PORT=5000
 ENV PYTHONPATH=/app
 
-# Create non-root user for security
-RUN useradd --create-home --shell /bin/bash app
-RUN chown -R app:app /app
-USER app
-
 # Expose port
 EXPOSE 5000
 
-# Remove Docker health check (Railway handles this)
-# HEALTHCHECK removed to avoid conflicts
-
-# Run the application
-CMD ["python", "railway_start.py"]
+# Simple startup command
+CMD ["python", "run.py"]
