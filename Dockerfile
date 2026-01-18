@@ -27,13 +27,18 @@ RUN mkdir -p uploads
 ENV FLASK_CONFIG=production
 ENV HOST=0.0.0.0
 ENV PORT=5000
+ENV PYTHONPATH=/app
+
+# Create non-root user for security
+RUN useradd --create-home --shell /bin/bash app
+RUN chown -R app:app /app
+USER app
 
 # Expose port
 EXPOSE 5000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+# Remove Docker health check (Railway handles this)
+# HEALTHCHECK removed to avoid conflicts
 
 # Run the application
-CMD ["python", "run.py"]
+CMD ["python", "railway_start.py"]

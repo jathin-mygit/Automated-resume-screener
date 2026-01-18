@@ -30,12 +30,20 @@ def _init_services():
     global NLP, VECT
     if NLP is None:
         print("🧠 Loading NLP model...")
-        NLP = load_nlp()
-        print("✓ NLP model loaded")
+        try:
+            NLP = load_nlp()
+            print("✓ NLP model loaded successfully")
+        except Exception as e:
+            print(f"❌ Failed to load NLP model: {e}")
+            raise e
     if VECT is None:
         print("🔤 Building vectorizer...")
-        VECT = build_vectorizer()
-        print("✓ Vectorizer ready")
+        try:
+            VECT = build_vectorizer()
+            print("✓ Vectorizer ready")
+        except Exception as e:
+            print(f"❌ Failed to build vectorizer: {e}")
+            raise e
 
 
 def create_app(config_name=None):
@@ -62,15 +70,41 @@ def create_app(config_name=None):
     def health_check():
         """Health check endpoint for monitoring."""
         try:
+            # Initialize services if not already done
             _init_services()
-            return jsonify({
+            
+            # Check if services are properly loaded
+            health_status = {
                 "status": "healthy",
+                "timestamp": datetime.now().isoformat(),
                 "nlp_loaded": NLP is not None,
                 "vectorizer_loaded": VECT is not None,
-                "active_sessions": len(SESSIONS)
-            })
+                "active_sessions": len(SESSIONS),
+                "config": app.config.get('FLASK_CONFIG', 'unknown'),
+                "version": "1.0.0"
+            }
+            
+            # Additional checks
+            if NLP is not None:
+                try:
+                    # Test NLP model with a simple sentence
+                    test_doc = NLP("test sentence")
+                    health_status["nlp_test"] = "passed"
+                except Exception as e:
+                    health_status["nlp_test"] = f"failed: {str(e)}"
+                    health_status["status"] = "degraded"
+            
+            return jsonify(health_status), 200
+            
         except Exception as e:
-            return jsonify({"status": "unhealthy", "error": str(e)}), 500
+            error_status = {
+                "status": "unhealthy",
+                "timestamp": datetime.now().isoformat(),
+                "error": str(e),
+                "nlp_loaded": NLP is not None,
+                "vectorizer_loaded": VECT is not None
+            }
+            return jsonify(error_status), 500
 
 
 
